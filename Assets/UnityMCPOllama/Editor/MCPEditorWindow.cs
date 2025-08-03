@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
-using System.Threading; // <-- ОСЬ ВИПРАВЛЕННЯ: Додано цей рядок
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -13,7 +13,7 @@ using Debug = UnityEngine.Debug;
 
 public class MCPEditorWindow : EditorWindow
 {
-    // --- Стан UI та конфігурація ---
+    // --- UI State & Configuration ---
     private string pythonServerStatus = "Checking...";
     private Color pythonServerColor = Color.yellow;
     
@@ -24,19 +24,24 @@ public class MCPEditorWindow : EditorWindow
     private string lmstudioModel = "qwen/qwen3-14b";
     private float lmstudioTemperature = 0.2f;
 
-    // --- Чат ---
+    // --- Model Selection ---
+    private List<string> availableModels = new List<string>();
+    private int selectedModelIndex = -1;
+    private bool fetchingModels = false;
+
+    // --- Chat ---
     private string userInput = "";
     private List<ChatMessage> chatHistory = new List<ChatMessage>();
     private Vector2 chatScrollPosition;
     
-    // --- Стилі ---
+    // --- Styles ---
     private GUIStyle userStyle;
     private GUIStyle assistantStyle;
     
-    // --- Мережева взаємодія ---
+    // --- Networking ---
     private static readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
     private const int MCP_PORT = 6500;
-    private float lastCheckTime = -10f; // Початкове значення для негайної перевірки
+    private float lastCheckTime = -10f; // Initial value to ensure an immediate check
     private const float CONNECTION_CHECK_INTERVAL = 5f;
 
     [MenuItem("Window/Unity MCP (LM Studio)")]
@@ -44,19 +49,19 @@ public class MCPEditorWindow : EditorWindow
 
     private void OnEnable()
     {
-        // Налаштування стилів
+        // Style setup
         userStyle = new GUIStyle(EditorStyles.label) { wordWrap = true, richText = true, normal = { textColor = new Color(0.6f, 0.8f, 1.0f) }, padding = new RectOffset(10, 10, 5, 5) };
         assistantStyle = new GUIStyle(EditorStyles.label) { wordWrap = true, richText = true, normal = { textColor = Color.white }, padding = new RectOffset(10, 10, 5, 5) };
         
-        // Завантаження конфігурації та початкова перевірка статусу
+        // Load configuration and perform initial status check
         LoadLMStudioConfig();
-        // Запускаємо повну перевірку при відкритті вікна
+        // Run a full check when the window is opened
         InitialStatusCheck();
     }
 
     private void Update()
     {
-        // Періодична легка перевірка "життя" Python-сервера
+        // Periodically check if the Python server is alive
         if (Time.realtimeSinceStartup - lastCheckTime >= CONNECTION_CHECK_INTERVAL)
         {
             lastCheckTime = Time.realtimeSinceStartup;
@@ -74,7 +79,7 @@ public class MCPEditorWindow : EditorWindow
         DrawChatSection();
     }
 
-    // --- Методи малювання UI ---
+    // --- UI Drawing Methods ---
 
     private void DrawPythonServerSection()
     {
@@ -83,6 +88,12 @@ public class MCPEditorWindow : EditorWindow
         var rect = EditorGUILayout.GetControlRect();
         EditorGUI.DrawRect(new Rect(rect.x, rect.y, 10, 18), pythonServerColor);
         EditorGUI.LabelField(new Rect(rect.x + 15, rect.y, rect.width - 15, 18), pythonServerStatus);
+
+        if (GUILayout.Button("Start Python Server"))
+        {
+            StartPythonServer();
+        }
+
         EditorGUILayout.EndVertical();
         EditorGUILayout.Space(10);
     }
@@ -100,7 +111,31 @@ public class MCPEditorWindow : EditorWindow
         
         lmstudioHost = EditorGUILayout.TextField("Host:", lmstudioHost);
         lmstudioPort = EditorGUILayout.IntField("Port:", lmstudioPort);
-        lmstudioModel = EditorGUILayout.TextField("Model:", lmstudioModel);
+
+        // --- Model Dropdown ---
+        EditorGUILayout.BeginHorizontal();
+        EditorGUI.BeginDisabledGroup(fetchingModels || availableModels.Count == 0);
+
+        int newIndex = EditorGUILayout.Popup("Model:", selectedModelIndex, availableModels.ToArray());
+        if (newIndex != selectedModelIndex && newIndex >= 0)
+        {
+            selectedModelIndex = newIndex;
+            lmstudioModel = availableModels[selectedModelIndex];
+        }
+
+        EditorGUI.EndDisabledGroup();
+
+        if (GUILayout.Button(fetchingModels ? "..." : "Refresh", GUILayout.Width(70)))
+        {
+            FetchAvailableModels();
+        }
+        EditorGUILayout.EndHorizontal();
+        if (availableModels.Count == 0 && !fetchingModels)
+        {
+            EditorGUILayout.HelpBox("Could not find any models. Is LM Studio running? Press Refresh to try again.", MessageType.Info);
+        }
+        // --- End Model Dropdown ---
+
         lmstudioTemperature = EditorGUILayout.Slider("Temperature:", lmstudioTemperature, 0f, 1f);
 
         if (GUILayout.Button("Apply & Save Configuration"))
@@ -138,7 +173,7 @@ public class MCPEditorWindow : EditorWindow
         EditorGUILayout.EndVertical();
     }
 
-    // --- Методи для взаємодії з сервером ---
+    // --- Server Interaction Methods ---
 
     private async void SendChatMessage(string message)
     {
@@ -188,11 +223,8 @@ public class MCPEditorWindow : EditorWindow
 
     private async void InitialStatusCheck()
     {
+        // Kicks off the check. The rest is handled asynchronously and via the Update loop.
         await CheckPythonServerLiveness();
-        if (pythonServerStatus == "Connected")
-        {
-            await CheckLMStudioStatus();
-        }
     }
 
     private async Task CheckPythonServerLiveness()
@@ -205,12 +237,18 @@ public class MCPEditorWindow : EditorWindow
                 HttpResponseMessage healthResponse = await httpClient.GetAsync(healthUrl, cts.Token);
                 if (healthResponse.IsSuccessStatusCode)
                 {
-                    if (pythonServerStatus != "Connected")
+                    bool wasConnected = pythonServerStatus == "Connected";
+                    pythonServerStatus = "Connected";
+                    pythonServerColor = Color.green;
+
+                    if (!wasConnected)
                     {
-                        pythonServerStatus = "Connected";
+                        // This is the first time we've connected in a while.
+                        // Let's refresh everything.
+                        await CheckLMStudioStatus();
+                        await FetchAvailableModels();
                         Repaint();
                     }
-                    pythonServerColor = Color.green;
                 }
                 else
                 {
@@ -258,6 +296,52 @@ public class MCPEditorWindow : EditorWindow
             Debug.LogError($"[MCP] Failed to check LM Studio status: {ex.Message}");
         }
         Repaint();
+    }
+
+    private async Task FetchAvailableModels()
+    {
+        if (fetchingModels) return;
+        fetchingModels = true;
+        availableModels.Clear(); // Clear previous results
+        selectedModelIndex = -1;
+        Repaint();
+
+        try
+        {
+            string url = $"http://localhost:{MCP_PORT}/api/models";
+            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+            {
+                HttpResponseMessage response = await httpClient.GetAsync(url, cts.Token);
+                response.EnsureSuccessStatusCode();
+
+                string json = await response.Content.ReadAsStringAsync();
+                var models = JsonConvert.DeserializeObject<List<string>>(json);
+
+                if (models != null && models.Count > 0)
+                {
+                    availableModels = models;
+                    selectedModelIndex = availableModels.IndexOf(lmstudioModel);
+                    // If the saved model isn't in the list, default to the first one.
+                    if (selectedModelIndex < 0)
+                    {
+                        selectedModelIndex = 0;
+                        lmstudioModel = availableModels[0];
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[MCP] Failed to fetch available models: {ex.Message}");
+            // Ensure the list is cleared on error
+            availableModels.Clear();
+            selectedModelIndex = -1;
+        }
+        finally
+        {
+            fetchingModels = false;
+            Repaint();
+        }
     }
     
     private async void UpdateLMStudioConfigOnServer()
@@ -320,6 +404,69 @@ public class MCPEditorWindow : EditorWindow
     {
         string dir = Path.Combine(Application.dataPath, "..", "Temp", "LMStudioConfig");
         return Path.Combine(dir, "lmstudio_config.json");
+    }
+
+    private string GetProjectRootPath()
+    {
+        return Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+    }
+
+    private void StartPythonServer()
+    {
+        string pythonScriptPath = Path.Combine(GetProjectRootPath(), "Assets", "Python", "Python", "lmstudio_mcp_server.py");
+        string pythonExecutable = "python3"; // Default to python3 for Mac/Linux
+
+        if (!File.Exists(pythonScriptPath))
+        {
+            Debug.LogError($"[MCP] Python script not found at: {pythonScriptPath}");
+            return;
+        }
+
+        try
+        {
+            var process = new System.Diagnostics.Process();
+
+            if (Application.platform == RuntimePlatform.WindowsEditor)
+            {
+                pythonExecutable = "python"; // Windows usually uses 'python'
+                process.StartInfo.FileName = "cmd.exe";
+                // /c to carry out the command and then terminate
+                // start to run in a new window, /D sets the working directory
+                process.StartInfo.Arguments = $"/c start \"Unity MCP Server\" /D \"{Path.GetDirectoryName(pythonScriptPath)}\" {pythonExecutable} \"{Path.GetFileName(pythonScriptPath)}\"";
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.CreateNoWindow = true;
+            }
+            else if (Application.platform == RuntimePlatform.OSXEditor)
+            {
+                // Using osascript to tell the Terminal app to run a command
+                string script = $"tell application \"Terminal\" to do script \"cd \\\"{Path.GetDirectoryName(pythonScriptPath)}\\\" && {pythonExecutable} \\\"{Path.GetFileName(pythonScriptPath)}\\\"\"";
+                process.StartInfo.FileName = "osascript";
+                process.StartInfo.Arguments = $"-e '{script}'";
+                process.StartInfo.UseShellExecute = true;
+            }
+            else // Assuming Linux
+            {
+                 // Try to use gnome-terminal, which is common. User might need to adapt for other terminals.
+                process.StartInfo.FileName = "gnome-terminal";
+                process.StartInfo.Arguments = $"--working-directory=\"{Path.GetDirectoryName(pythonScriptPath)}\" -- {pythonExecutable} \"{Path.GetFileName(pythonScriptPath)}\"";
+                process.StartInfo.UseShellExecute = true;
+            }
+
+            process.Start();
+            Debug.Log("[MCP] Attempting to start Python server in a new terminal window.");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[MCP] Failed to start Python server: {ex.Message}");
+            EditorUtility.DisplayDialog(
+                "Failed to Start Server",
+                "Could not start the Python server. Please ensure you have Python (and the correct terminal for your OS) installed and in your system's PATH. " +
+                "You may need to start it manually by running:\n\n" +
+                $"python3 {pythonScriptPath}\n\n" +
+                $"Error: {ex.Message}",
+                "OK"
+            );
+        }
     }
 
     private readonly struct ChatMessage

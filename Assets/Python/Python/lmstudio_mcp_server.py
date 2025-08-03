@@ -206,6 +206,32 @@ async def get_status():
     }
 
 
+@app.get("/api/models")
+async def get_available_models():
+    """Fetches the list of available models from the LM Studio backend."""
+    if _lmstudio_connection is None:
+        raise HTTPException(status_code=503, detail="Not connected to LM Studio.")
+
+    try:
+        url = f"{_lmstudio_connection.base_url}/v1/models"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=10) as response:
+                response.raise_for_status()
+                models_data = await response.json()
+                if "data" not in models_data or not isinstance(models_data["data"], list):
+                    logger.error("Invalid format from LM Studio /v1/models: %s", models_data)
+                    raise HTTPException(status_code=500, detail="Invalid format from LM Studio /v1/models endpoint.")
+
+                model_ids = [model.get("id") for model in models_data["data"] if model.get("id")]
+                return model_ids
+    except aiohttp.ClientError as e:
+        logger.error("Could not connect to LM Studio to get models: %s", e)
+        raise HTTPException(status_code=502, detail=f"Could not connect to LM Studio: {e}")
+    except Exception as e:
+        logger.error("Failed to get available models: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
 @app.post("/api/configure")
 async def configure(request: Dict[str, Any]):
     """Updates LM Studio settings without restarting the server."""
