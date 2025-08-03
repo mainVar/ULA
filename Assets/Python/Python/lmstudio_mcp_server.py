@@ -1,3 +1,9 @@
+"""
+This script provides a FastAPI-based server to proxy requests from Unity to an
+LM Studio backend. It exposes endpoints to process natural language prompts,
+generate JSON commands for the Unity Editor, and manage the connection to the
+LM Studio server.
+"""
 import logging
 import asyncio
 import aiohttp
@@ -8,14 +14,14 @@ import uvicorn
 import json
 import re
 
-# ─── Логування ────────────────────────────────────────────────────────────────
+# --- Logging Setup ---
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("LMStudioMCP")
 
-# ─── Конфігурація ─────────────────────────────────────────────────────────────
+# --- Configuration ---
 config: Dict[str, Any] = {
     "host": "localhost",
     "port": 6500,
@@ -23,7 +29,7 @@ config: Dict[str, Any] = {
     "lmstudio_port": 1234,
     "model": "qwen/qwen3-14b",
     "temperature": 0.2,
-    "system_prompt": """You are a tool‑calling agent for Unity. Your goal is to translate
+    "system_prompt": """You are a tool-calling agent for Unity. Your goal is to translate
 user requests into JSON commands that the Unity Editor can execute.
 
 When the user asks for an action, you MUST respond ONLY with a JSON object or an
@@ -42,7 +48,7 @@ Available functions:
 - find_objects_by_name({"name": "search_term"})
 - editor_action({"action": "PLAY" | "STOP" | "SAVE"})
 
-Example user request: "Create a sphere named Ball at position 1, 2, 3"
+Example user request: "Create a sphere named Ball at position 1, 2, 3"
 Example JSON response:
 [
   {
@@ -54,26 +60,24 @@ Example JSON response:
     }
   }
 ]
-Use code with caution.
 
-Python
 Now, process the user's request.""",
 }
 
-# ─── Парсер JSON‑команд ───────────────────────────────────────────────────────
+# --- JSON Command Parser ---
 def extract_json_from_response(text: str) -> List[Dict[str, Any]]:
-    """Витягує JSON‑команди з відповіді LLM, ігноруючи <think> … </think>."""
+    """Extracts JSON commands from the LLM response, ignoring <think> blocks."""
     try:
-        # 1) Обрізаємо усе до </think>, якщо такий блок є
+        # 1) Discard any text before the final </think> tag if it exists
         text_after_think = text.split("</think>", 1)[-1] if "</think>" in text else text
 
-        # 2) Шукаємо fenced‑блок ```json … ```
+        # 2) Find fenced code blocks (```json ... ```)
         code_blocks = re.findall(r"```(?:json)?\s*([\s\S]*?)\s*```", text_after_think, re.DOTALL)
         if code_blocks:
             data = json.loads(code_blocks[0])
             return data if isinstance(data, list) else [data]
 
-        # 3) Шукаємо перший валідний JSON‑об’єкт/масив у plain‑тексті
+        # 3) Find the first valid JSON object/array in plain text
         match = re.search(r"(\[[\s\S]*\]|\{[\s\S]*\})", text_after_think.strip())
         if match:
             data = json.loads(match.group(1))
@@ -86,8 +90,9 @@ def extract_json_from_response(text: str) -> List[Dict[str, Any]]:
         logger.error("Failed to parse JSON from LLM response: %s", e, exc_info=True)
         return []
 
-# ─── Обгортка над LM Studio ───────────────────────────────────────────────────
+# --- LM Studio Wrapper ---
 class LMStudioConnection:
+    """A wrapper for interacting with the LM Studio API."""
     def __init__(self, host: str, port: int, model: str, temperature: float) -> None:
         self.host = host
         self.port = port
@@ -96,6 +101,7 @@ class LMStudioConnection:
         self.base_url = f"http://{host}:{port}"
 
     async def test_connection(self) -> bool:
+        """Tests the connection to the LM Studio server."""
         try:
             async with aiohttp.ClientSession() as s:
                 async with s.get(f"{self.base_url}/v1/models", timeout=5) as r:
@@ -104,6 +110,7 @@ class LMStudioConnection:
             return False
 
     async def generate(self, prompt: str, system_prompt: str | None = None) -> str:
+        """Generates a completion using the LM Studio chat API."""
         url = f"{self.base_url}/v1/chat/completions"
         messages = (
             [{"role": "system", "content": system_prompt}] if system_prompt else []
@@ -122,12 +129,12 @@ class LMStudioConnection:
                 data = await r.json()
                 return data["choices"][0]["message"]["content"]
 
-# ─── FastAPI ──────────────────────────────────────────────────────────────────
+# --- FastAPI Application ---
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # відкрито всюди
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -137,6 +144,7 @@ _lmstudio_connection: LMStudioConnection | None = None
 
 
 async def get_lmstudio_connection() -> LMStudioConnection:
+    """Factory function to get the LM Studio connection instance."""
     return LMStudioConnection(
         host=config["lmstudio_host"],
         port=config["lmstudio_port"],
@@ -147,32 +155,35 @@ async def get_lmstudio_connection() -> LMStudioConnection:
 
 @app.on_event("startup")
 async def startup_event() -> None:
+    """Initializes the connection to LM Studio on server startup."""
     global _lmstudio_connection
     _lmstudio_connection = await get_lmstudio_connection()
     if await _lmstudio_connection.test_connection():
         logger.info(
-            "Connected to LM Studio at %s:%s",
+            "Connected to LM Studio at %s:%s",
             config["lmstudio_host"],
             config["lmstudio_port"],
         )
     else:
-        logger.warning("Could not connect to LM Studio — перевірте, чи увімкнено API.")
+        logger.warning("Could not connect to LM Studio — please check if the API server is running.")
 
 
-# ─── Ендпоїнти ────────────────────────────────────────────────────────────────
+# --- API Endpoints ---
 @app.get("/health")
 async def health_check():
+    """Health check endpoint."""
     return {"status": "ok", "service": "unity-mcp-lmstudio"}
 
 
 @app.post("/api/process")
 async def process_request(request: Dict[str, Any]):
+    """Processes a prompt and returns the LLM response and extracted commands."""
     prompt = request.get("prompt") or request.get("content")
     if not prompt:
-        raise HTTPException(status_code=400, detail="Missing 'prompt' or 'content'")
+        raise HTTPException(status_code=400, detail="Missing 'prompt' or 'content' in request.")
 
     if _lmstudio_connection is None:
-        raise HTTPException(status_code=503, detail="Not connected to LM Studio.")
+        raise HTTPException(status_code=503, detail="Not connected to LM Studio.")
 
     llm_resp = await _lmstudio_connection.generate(prompt, config["system_prompt"])
     commands = extract_json_from_response(llm_resp)
@@ -182,6 +193,7 @@ async def process_request(request: Dict[str, Any]):
 
 @app.get("/api/status")
 async def get_status():
+    """Returns the current connection status to LM Studio."""
     if _lmstudio_connection is None:
         return {"status": "disconnected"}
 
@@ -196,21 +208,27 @@ async def get_status():
 
 @app.post("/api/configure")
 async def configure(request: Dict[str, Any]):
-    """Оновити налаштування LM Studio без перезапуску сервера."""
-    for key in ["host", "port", "model", "temperature", "system_prompt"]:
-        req_key = f"lmstudio_{key}"
-        if req_key in request:
-            config[req_key] = request[req_key]
+    """Updates LM Studio settings without restarting the server."""
+    # List of valid keys that can be updated in the config
+    updatable_keys = [
+        "host", "port", "lmstudio_host", "lmstudio_port",
+        "model", "temperature", "system_prompt"
+    ]
+
+    for key in updatable_keys:
+        if key in request:
+            config[key] = request[key]
+            logger.info("Updated config: %s = %s", key, request[key])
 
     global _lmstudio_connection
     _lmstudio_connection = await get_lmstudio_connection()
     return await get_status()
 
 
-# ─── Запуск ────────────────────────────────────────────────────────────────────
+# --- Server Start ---
 if __name__ == "__main__":
     logger.info(
-        "Starting LM Studio MCP server on http://%s:%s", config["host"], config["port"]
+        "Starting LM Studio MCP server on http://%s:%s", config["host"], config["port"]
     )
     uvicorn.run(
         "lmstudio_mcp_server:app",
