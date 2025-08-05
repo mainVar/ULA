@@ -10,13 +10,14 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Debug = UnityEngine.Debug;
+using UnityLocalAi; // <-- Add the new namespace
 
 public class MCPEditorWindow : EditorWindow
 {
     // --- UI State & Configuration ---
     private string pythonServerStatus = "Checking...";
     private Color pythonServerColor = Color.yellow;
-    
+
     private string lmstudioStatusMessage = "N/A";
 
     private string lmstudioHost = "localhost";
@@ -33,26 +34,26 @@ public class MCPEditorWindow : EditorWindow
     private string userInput = "";
     private List<ChatMessage> chatHistory = new List<ChatMessage>();
     private Vector2 chatScrollPosition;
-    
+
     // --- Styles ---
     private GUIStyle userStyle;
     private GUIStyle assistantStyle;
-    
+
     // --- Networking ---
     private static readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
     private const int MCP_PORT = 6500;
     private float lastCheckTime = -10f; // Initial value to ensure an immediate check
     private const float CONNECTION_CHECK_INTERVAL = 5f;
 
-    [MenuItem("Window/Unity MCP (LM Studio)")]
-    public static void ShowWindow() => GetWindow<MCPEditorWindow>("MCP Editor");
+    [MenuItem("Window/Unity Local AI")]
+    public static void ShowWindow() => GetWindow<MCPEditorWindow>("Local AI");
 
     private void OnEnable()
     {
         // Style setup
         userStyle = new GUIStyle(EditorStyles.label) { wordWrap = true, richText = true, normal = { textColor = new Color(0.6f, 0.8f, 1.0f) }, padding = new RectOffset(10, 10, 5, 5) };
         assistantStyle = new GUIStyle(EditorStyles.label) { wordWrap = true, richText = true, normal = { textColor = Color.white }, padding = new RectOffset(10, 10, 5, 5) };
-        
+
         // Load configuration and perform initial status check
         LoadLMStudioConfig();
         // Run a full check when the window is opened
@@ -71,7 +72,7 @@ public class MCPEditorWindow : EditorWindow
 
     private void OnGUI()
     {
-        EditorGUILayout.LabelField("MCP Editor (LM Studio)", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Unity Local AI", EditorStyles.boldLabel);
         EditorGUILayout.Space(10);
 
         DrawPythonServerSection();
@@ -108,7 +109,7 @@ public class MCPEditorWindow : EditorWindow
         {
             CheckLMStudioStatus();
         }
-        
+
         lmstudioHost = EditorGUILayout.TextField("Host:", lmstudioHost);
         lmstudioPort = EditorGUILayout.IntField("Port:", lmstudioPort);
 
@@ -145,7 +146,7 @@ public class MCPEditorWindow : EditorWindow
         EditorGUILayout.EndVertical();
         EditorGUILayout.Space(10);
     }
-    
+
     private void DrawChatSection()
     {
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
@@ -162,7 +163,7 @@ public class MCPEditorWindow : EditorWindow
                 EditorGUILayout.Space(5);
             }
         }
-        
+
         userInput = EditorGUILayout.TextArea(userInput, GUILayout.Height(60));
         if (GUILayout.Button("Send") && !string.IsNullOrEmpty(userInput))
         {
@@ -204,10 +205,11 @@ public class MCPEditorWindow : EditorWindow
             JArray commands = result["commands"] as JArray;
 
             chatHistory[responseIndex] = new ChatMessage("Assistant", llmResponse);
-            
+
             if (commands != null && commands.Count > 0)
             {
-                EditorApplication.delayCall += () => UnityMCPBridge.ProcessExtractedCommands(commands);
+                // *** MODIFIED LINE ***
+                EditorApplication.delayCall += () => UnityMCPBridge.ExecuteCommands(commands.ToString());
             }
         }
         catch (Exception ex)
@@ -267,7 +269,7 @@ public class MCPEditorWindow : EditorWindow
             pythonServerColor = Color.red;
         }
     }
-    
+
     private async Task CheckLMStudioStatus()
     {
         lmstudioStatusMessage = "Checking...";
@@ -279,7 +281,7 @@ public class MCPEditorWindow : EditorWindow
             string statusJson = await statusResponse.Content.ReadAsStringAsync();
 
             if (!statusResponse.IsSuccessStatusCode) throw new Exception(statusJson);
-            
+
             var status = JObject.Parse(statusJson);
             if (status["status"]?.ToString() == "connected")
             {
@@ -343,7 +345,7 @@ public class MCPEditorWindow : EditorWindow
             Repaint();
         }
     }
-    
+
     private async void UpdateLMStudioConfigOnServer()
     {
         try
@@ -383,7 +385,7 @@ public class MCPEditorWindow : EditorWindow
         }
         catch (Exception ex) { Debug.LogError($"[MCP] Failed to save local config: {ex.Message}"); }
     }
-    
+
     private void LoadLMStudioConfig()
     {
         try
