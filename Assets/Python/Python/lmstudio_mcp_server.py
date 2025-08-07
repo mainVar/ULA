@@ -257,19 +257,18 @@ async def startup_event() -> None:
         logger.warning("Could not connect to LM Studio. Please ensure the API server is running.")
 
     # Connect to ChromaDB
-    # if MemoryManager:
-    #     try:
-    #         _memory_manager = MemoryManager(
-    #             host=config["chromadb_host"],
-    #             port=config["chromadb_port"]
-    #         )
-    #         logger.info("Connected to ChromaDB at %s:%s", config["chromadb_host"], config["chromadb_port"])
-    #     except Exception as e:
-    #         logger.error(f"Could not connect to ChromaDB. Is it running? - {e}", exc_info=True)
-    #         _memory_manager = None
-    # else:
-    #     logger.warning("MemoryManager not available. Skipping ChromaDB connection.")
-    logger.warning("ChromaDB connection is temporarily disabled for debugging.")
+    if MemoryManager:
+        try:
+            _memory_manager = MemoryManager(
+                host=config["chromadb_host"],
+                port=config["chromadb_port"]
+            )
+            logger.info("Connected to ChromaDB at %s:%s", config["chromadb_host"], config["chromadb_port"])
+        except Exception as e:
+            logger.error(f"Could not connect to ChromaDB. Is it running? - {e}", exc_info=True)
+            _memory_manager = None
+    else:
+        logger.warning("MemoryManager not available. Skipping ChromaDB connection.")
 
 
 # --- API Endpoints ---
@@ -292,8 +291,8 @@ async def get_status():
         "model": config["model"],
     }
 
-@app.post("/api/step", summary="Process a ReAct Step")
-async def step(request: Dict[str, Any]):
+@app.post("/api/process", summary="Process a ReAct Step")
+async def process(request: Dict[str, Any]):
     """
     Processes a single step in the ReAct loop.
     Receives the user's prompt and history, returns the next thought and action.
@@ -364,6 +363,72 @@ async def step(request: Dict[str, Any]):
         } if action_name else None,
         "raw_response": llm_response
     }
+
+
+@app.post("/api/configure", summary="Update LM Studio Configuration")
+async def configure(request: Dict[str, Any]):
+    """
+    Updates the LM Studio connection configuration.
+    """
+    global _lmstudio_connection
+    global config
+
+    model = request.get("model")
+    host = request.get("host")
+    port = request.get("port")
+    temperature = request.get("temperature")
+
+    if not all([model, host, port, temperature is not None]):
+        raise HTTPException(status_code=400, detail="Missing required configuration fields.")
+
+    config.update({
+        "lmstudio_host": host,
+        "lmstudio_port": port,
+        "model": model,
+        "temperature": temperature,
+    })
+
+    # Re-initialize the connection with the new settings
+    _lmstudio_connection = LMStudioConnection(
+        host=config["lmstudio_host"],
+        port=config["lmstudio_port"],
+        model=config["model"],
+        temperature=config["temperature"],
+    )
+
+    logger.info(f"Configuration updated. New model: {model}, New host: {host}:{port}")
+    # Test the new connection
+    if await _lmstudio_connection.test_connection():
+        logger.info("Successfully connected to LM Studio with new configuration.")
+        return {"status": "success", "message": "Configuration updated and connection successful."}
+    else:
+        logger.warning("Could not connect to LM Studio with new configuration.")
+        return {"status": "warning", "message": "Configuration updated, but could not connect to LM Studio."}
+
+
+@app.get("/api/models", summary="Get Available LM Studio Models")
+async def get_models():
+    """
+    Fetches the list of available models from the connected LM Studio server.
+    """
+    if _lmstudio_connection is None:
+        raise HTTPException(status_code=503, detail="Not connected to LM Studio.")
+
+    url = f"{_lmstudio_connection.base_url}/v1/models"
+    try:
+        async with aiohttp.ClientSession() as s:
+            async with s.get(url, timeout=10) as r:
+                r.raise_for_status()
+                data = await r.json()
+                # LM Studio API returns a list of objects, each with an 'id'
+                model_ids = [model.get("id") for model in data.get("data", []) if model.get("id")]
+                return model_ids
+    except aiohttp.ClientError as e:
+        logger.error(f"Error fetching models from LM Studio: {e}")
+        raise HTTPException(status_code=502, detail=f"Could not fetch models from LM Studio: {e}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred while fetching models: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred while fetching models.")
 
 
 @app.get("/mcp/server", summary="MCP Server Information")
