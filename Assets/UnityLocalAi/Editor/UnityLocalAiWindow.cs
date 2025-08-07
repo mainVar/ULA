@@ -121,10 +121,19 @@ namespace UnityLocalAi
             pythonServerStatusLabel = rootVisualElement.Q<Label>("PythonServerStatusLabel");
             startServerButton = rootVisualElement.Q<Button>("StartServerButton");
             lmstudioStatusLabel = rootVisualElement.Q<Label>("LMStudioStatusLabel");
-            refreshLMStatusButton = rootVisualElement.Q<Button>("RefreshLMStatusButton");
+            // The old refresh button is gone, we will get the new one.
+            // refreshLMStatusButton = rootVisualElement.Q<Button>("RefreshLMStatusButton");
             lmstudioHostField = rootVisualElement.Q<TextField>("LMStudioHost");
             lmstudioPortField = rootVisualElement.Q<IntegerField>("LMStudioPort");
-            lmstudioModelDropdown = rootVisualElement.Q<PopupField<string>>("LMStudioModel");
+
+            // Create the popup field programmatically
+            var modelDropdownContainer = rootVisualElement.Q<VisualElement>("ModelDropdownContainer");
+            lmstudioModelDropdown = new PopupField<string>("Model", availableModels, 0);
+            lmstudioModelDropdown.style.flexGrow = 1;
+            modelDropdownContainer.Insert(0, lmstudioModelDropdown);
+            refreshLMStatusButton = rootVisualElement.Q<Button>("RefreshModelsButton");
+
+
             lmstudioTemperatureSlider = rootVisualElement.Q<Slider>("LMStudioTemperature");
             lmstudioTemperatureField = rootVisualElement.Q<FloatField>("LMStudioTemperatureField");
             applyLMConfigButton = rootVisualElement.Q<Button>("ApplyLMConfigButton");
