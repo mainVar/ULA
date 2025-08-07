@@ -150,7 +150,7 @@ Start by thinking about the user's request.
 }
 
 # --- Global Instances ---
-_lmstudio_connection: Optional[LMStudioConnection] = None
+_lmstudio_connection: Optional["LMStudioConnection"] = None
 _memory_manager: Optional[MemoryManager] = None
 
 # --- JSON Command Parser (Enhanced for ReAct) ---
@@ -257,18 +257,19 @@ async def startup_event() -> None:
         logger.warning("Could not connect to LM Studio. Please ensure the API server is running.")
 
     # Connect to ChromaDB
-    if MemoryManager:
-        try:
-            _memory_manager = MemoryManager(
-                host=config["chromadb_host"],
-                port=config["chromadb_port"]
-            )
-            logger.info("Connected to ChromaDB at %s:%s", config["chromadb_host"], config["chromadb_port"])
-        except Exception as e:
-            logger.error(f"Could not connect to ChromaDB. Is it running? - {e}", exc_info=True)
-            _memory_manager = None
-    else:
-        logger.warning("MemoryManager not available. Skipping ChromaDB connection.")
+    # if MemoryManager:
+    #     try:
+    #         _memory_manager = MemoryManager(
+    #             host=config["chromadb_host"],
+    #             port=config["chromadb_port"]
+    #         )
+    #         logger.info("Connected to ChromaDB at %s:%s", config["chromadb_host"], config["chromadb_port"])
+    #     except Exception as e:
+    #         logger.error(f"Could not connect to ChromaDB. Is it running? - {e}", exc_info=True)
+    #         _memory_manager = None
+    # else:
+    #     logger.warning("MemoryManager not available. Skipping ChromaDB connection.")
+    logger.warning("ChromaDB connection is temporarily disabled for debugging.")
 
 
 # --- API Endpoints ---
