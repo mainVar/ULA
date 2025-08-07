@@ -199,28 +199,64 @@ Here are the available functions and their arguments:
 
 # --- JSON Command Parser ---
 def extract_json_from_response(text: str) -> List[Dict[str, Any]]:
-    """Extracts JSON commands from the LLM response, ignoring <think> blocks."""
+    """
+    Extracts JSON commands from the LLM response. It tries multiple strategies
+    to find the JSON, making it robust against conversational text.
+    """
     try:
-        # 1) Discard any text before the final </think> tag if it exists
-        text_after_think = text.split("</think>", 1)[-1] if "</think>" in text else text
+        # Strategy 1: Discard any text within <think>...</think> blocks
+        text_after_think = re.sub(r"<think>[\s\S]*?</think>", "", text).strip()
 
-        # 2) Find fenced code blocks (```json ... ```)
+        # Strategy 2: Find fenced code blocks (```json ... ```)
         code_blocks = re.findall(r"```(?:json)?\s*([\s\S]*?)\s*```", text_after_think, re.DOTALL)
         if code_blocks:
-            data = json.loads(code_blocks[0])
-            return data if isinstance(data, list) else [data]
+            try:
+                data = json.loads(code_blocks[0])
+                logger.info("Successfully parsed JSON from fenced code block.")
+                return data if isinstance(data, list) else [data]
+            except json.JSONDecodeError as e:
+                logger.warning("Found fenced code block, but failed to parse JSON: %s", e)
 
-        # 3) Find the first valid JSON object/array in plain text
+
+        # Strategy 3: Find the last potential start of a JSON array or object.
+        # This is robust against conversational text that might contain JSON-like strings.
+        last_bracket_pos = text_after_think.rfind('[')
+        last_brace_pos = text_after_think.rfind('{')
+
+        start_pos = -1
+        if last_bracket_pos != -1 and last_bracket_pos > last_brace_pos:
+            start_pos = last_bracket_pos
+        elif last_brace_pos != -1:
+            start_pos = last_brace_pos
+
+        if start_pos != -1:
+            json_text = text_after_think[start_pos:]
+            try:
+                data = json.loads(json_text)
+                logger.info("Successfully parsed JSON from last found bracket/brace.")
+                return data if isinstance(data, list) else [data]
+            except json.JSONDecodeError as e:
+                logger.warning(
+                    "Could not parse JSON from last found bracket/brace at pos %d: %s",
+                    start_pos, e
+                )
+
+        # Strategy 4: Fallback to the original greedy regex search as a last resort.
         match = re.search(r"(\[[\s\S]*\]|\{[\s\S]*\})", text_after_think.strip())
         if match:
-            data = json.loads(match.group(1))
-            return data if isinstance(data, list) else [data]
+            try:
+                data = json.loads(match.group(1))
+                logger.info("Successfully parsed JSON using fallback regex.")
+                return data if isinstance(data, list) else [data]
+            except json.JSONDecodeError as e:
+                logger.warning("Fallback regex found a match, but it was not valid JSON: %s", e)
 
-        logger.warning("No JSON found in LLM response.")
+
+        logger.warning("No valid JSON found in LLM response after all strategies.")
         return []
 
     except Exception as e:
-        logger.error("Failed to parse JSON from LLM response: %s", e, exc_info=True)
+        logger.error("An unexpected error occurred during JSON parsing: %s", e, exc_info=True)
         return []
 
 # --- File I/O Operations ---
