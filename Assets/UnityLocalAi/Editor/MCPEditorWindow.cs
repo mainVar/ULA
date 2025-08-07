@@ -10,7 +10,10 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Debug = UnityEngine.Debug;
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
 using UnityLocalAi; // <-- Add the new namespace
+
 
 public class MCPEditorWindow : EditorWindow
 {
@@ -31,13 +34,23 @@ public class MCPEditorWindow : EditorWindow
     private bool fetchingModels = false;
 
     // --- Chat ---
-    private string userInput = "";
     private List<ChatMessage> chatHistory = new List<ChatMessage>();
-    private Vector2 chatScrollPosition;
 
-    // --- Styles ---
-    private GUIStyle userStyle;
-    private GUIStyle assistantStyle;
+    // --- UI Toolkit Elements ---
+    private VisualElement pythonServerStatusIndicator;
+    private Label pythonServerStatusLabel;
+    private Button startServerButton;
+    private Label lmstudioStatusLabel;
+    private Button refreshLMStatusButton;
+    private TextField lmstudioHostField;
+    private IntegerField lmstudioPortField;
+    private PopupField<string> lmstudioModelDropdown;
+    private Slider lmstudioTemperatureSlider;
+    private Button applyLMConfigButton;
+    private ScrollView chatScrollView;
+    private TextField chatInput;
+    private Button sendButton;
+
 
     // --- Networking ---
     private static readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
@@ -48,14 +61,55 @@ public class MCPEditorWindow : EditorWindow
     [MenuItem("Window/Unity Local AI")]
     public static void ShowWindow() => GetWindow<MCPEditorWindow>("Local AI");
 
-    private void OnEnable()
+    public void CreateGUI()
     {
-        // Style setup
-        userStyle = new GUIStyle(EditorStyles.label) { wordWrap = true, richText = true, normal = { textColor = new Color(0.6f, 0.8f, 1.0f) }, padding = new RectOffset(10, 10, 5, 5) };
-        assistantStyle = new GUIStyle(EditorStyles.label) { wordWrap = true, richText = true, normal = { textColor = Color.white }, padding = new RectOffset(10, 10, 5, 5) };
+        // Each editor window contains a root VisualElement object
+        VisualElement root = rootVisualElement;
+
+        // Import UXML
+        var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor.uxml");
+        VisualElement labelFromUXML = visualTree.Instantiate();
+        root.Add(labelFromUXML);
+
+        // Import USS
+        var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor.uss");
+        root.styleSheets.Add(styleSheet);
+
+        // Get references to UI elements
+        pythonServerStatusIndicator = root.Q<VisualElement>("PythonServerStatusIndicator");
+        pythonServerStatusLabel = root.Q<Label>("PythonServerStatusLabel");
+        startServerButton = root.Q<Button>("StartServerButton");
+        lmstudioStatusLabel = root.Q<Label>("LMStudioStatusLabel");
+        refreshLMStatusButton = root.Q<Button>("RefreshLMStatusButton");
+        lmstudioHostField = root.Q<TextField>("LMStudioHost");
+        lmstudioPortField = root.Q<IntegerField>("LMStudioPort");
+        lmstudioModelDropdown = new PopupField<string>("Model:", availableModels, 0);
+        root.Q<VisualElement>("LMStudioSection").Insert(4, lmstudioModelDropdown);
+        lmstudioTemperatureSlider = root.Q<Slider>("LMStudioTemperature");
+        applyLMConfigButton = root.Q<Button>("ApplyLMConfigButton");
+        chatScrollView = root.Q<ScrollView>("ChatScrollView");
+        chatInput = root.Q<TextField>("ChatInput");
+        sendButton = root.Q<Button>("SendButton");
+
+        // Register event callbacks
+        startServerButton.clicked += StartPythonServer;
+        refreshLMStatusButton.clicked += () => CheckLMStudioStatus();
+        applyLMConfigButton.clicked += UpdateLMStudioConfigOnServer;
+        sendButton.clicked += () => SendChatMessage(chatInput.value);
+
+        lmstudioHostField.RegisterValueChangedCallback(evt => lmstudioHost = evt.newValue);
+        lmstudioPortField.RegisterValueChangedCallback(evt => lmstudioPort = evt.newValue);
+        lmstudioModelDropdown.RegisterValueChangedCallback(evt => lmstudioModel = evt.newValue);
+        lmstudioTemperatureSlider.RegisterValueChangedCallback(evt => lmstudioTemperature = evt.newValue);
 
         // Load configuration and perform initial status check
         LoadLMStudioConfig();
+
+        // Set initial values
+        lmstudioHostField.value = lmstudioHost;
+        lmstudioPortField.value = lmstudioPort;
+        lmstudioTemperatureSlider.value = lmstudioTemperature;
+
         // Run a full check when the window is opened
         InitialStatusCheck();
     }
@@ -70,108 +124,14 @@ public class MCPEditorWindow : EditorWindow
         }
     }
 
-    private void OnGUI()
+    private void RedrawUI()
     {
-        EditorGUILayout.LabelField("Unity Local AI", EditorStyles.boldLabel);
-        EditorGUILayout.Space(10);
-
-        DrawPythonServerSection();
-        DrawLMStudioSection();
-        DrawChatSection();
-    }
-
-    // --- UI Drawing Methods ---
-
-    private void DrawPythonServerSection()
-    {
-        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-        EditorGUILayout.LabelField("Python Server Status", EditorStyles.boldLabel);
-        var rect = EditorGUILayout.GetControlRect();
-        EditorGUI.DrawRect(new Rect(rect.x, rect.y, 10, 18), pythonServerColor);
-        EditorGUI.LabelField(new Rect(rect.x + 15, rect.y, rect.width - 15, 18), pythonServerStatus);
-
-        if (GUILayout.Button("Start Python Server"))
+        if (pythonServerStatusIndicator != null)
         {
-            StartPythonServer();
+            pythonServerStatusIndicator.style.backgroundColor = pythonServerColor;
+            pythonServerStatusLabel.text = pythonServerStatus;
+            lmstudioStatusLabel.text = lmstudioStatusMessage;
         }
-
-        EditorGUILayout.EndVertical();
-        EditorGUILayout.Space(10);
-    }
-
-    private void DrawLMStudioSection()
-    {
-        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-        EditorGUILayout.LabelField("LM Studio Configuration", EditorStyles.boldLabel);
-        EditorGUILayout.LabelField($"Status: {lmstudioStatusMessage}", EditorStyles.wordWrappedLabel);
-
-        if (GUILayout.Button("Refresh Status"))
-        {
-            CheckLMStudioStatus();
-        }
-
-        lmstudioHost = EditorGUILayout.TextField("Host:", lmstudioHost);
-        lmstudioPort = EditorGUILayout.IntField("Port:", lmstudioPort);
-
-        // --- Model Dropdown ---
-        EditorGUILayout.BeginHorizontal();
-        EditorGUI.BeginDisabledGroup(fetchingModels || availableModels.Count == 0);
-
-        int newIndex = EditorGUILayout.Popup("Model:", selectedModelIndex, availableModels.ToArray());
-        if (newIndex != selectedModelIndex && newIndex >= 0)
-        {
-            selectedModelIndex = newIndex;
-            lmstudioModel = availableModels[selectedModelIndex];
-        }
-
-        EditorGUI.EndDisabledGroup();
-
-        if (GUILayout.Button(fetchingModels ? "..." : "Refresh", GUILayout.Width(70)))
-        {
-            FetchAvailableModels();
-        }
-        EditorGUILayout.EndHorizontal();
-        if (availableModels.Count == 0 && !fetchingModels)
-        {
-            EditorGUILayout.HelpBox("Could not find any models. Is LM Studio running? Press Refresh to try again.", MessageType.Info);
-        }
-        // --- End Model Dropdown ---
-
-        lmstudioTemperature = EditorGUILayout.Slider("Temperature:", lmstudioTemperature, 0f, 1f);
-
-        if (GUILayout.Button("Apply & Save Configuration"))
-        {
-            UpdateLMStudioConfigOnServer();
-        }
-        EditorGUILayout.EndVertical();
-        EditorGUILayout.Space(10);
-    }
-
-    private void DrawChatSection()
-    {
-        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-        EditorGUILayout.LabelField("Chat with Unity via LM Studio", EditorStyles.boldLabel);
-
-        using (var chatScroll = new EditorGUILayout.ScrollViewScope(chatScrollPosition, GUILayout.Height(300)))
-        {
-            chatScrollPosition = chatScroll.scrollPosition;
-            foreach (var msg in chatHistory)
-            {
-                var style = msg.sender == "You" ? userStyle : assistantStyle;
-                EditorGUILayout.LabelField($"<b>{msg.sender}:</b>", style);
-                EditorGUILayout.LabelField(msg.content, style);
-                EditorGUILayout.Space(5);
-            }
-        }
-
-        userInput = EditorGUILayout.TextArea(userInput, GUILayout.Height(60));
-        if (GUILayout.Button("Send") && !string.IsNullOrEmpty(userInput))
-        {
-            SendChatMessage(userInput);
-            userInput = "";
-            GUI.FocusControl(null);
-        }
-        EditorGUILayout.EndVertical();
     }
 
     // --- Server Interaction Methods ---
@@ -180,10 +140,10 @@ public class MCPEditorWindow : EditorWindow
     {
         if (string.IsNullOrWhiteSpace(message)) return;
 
-        chatHistory.Add(new ChatMessage("You", message));
-        int responseIndex = chatHistory.Count;
-        chatHistory.Add(new ChatMessage("Assistant", "<i>Processing...</i>"));
-        Repaint();
+        AddMessageToChat("You", message);
+        chatInput.value = "";
+
+        AddMessageToChat("Assistant", "<i>Processing...</i>", true);
 
         try
         {
@@ -204,7 +164,7 @@ public class MCPEditorWindow : EditorWindow
             string llmResponse = result["llm_response"]?.ToString() ?? "No text response.";
             JArray commands = result["commands"] as JArray;
 
-            chatHistory[responseIndex] = new ChatMessage("Assistant", llmResponse);
+            UpdateLastAssistantMessage(llmResponse);
 
             if (commands != null && commands.Count > 0)
             {
@@ -215,13 +175,48 @@ public class MCPEditorWindow : EditorWindow
         catch (Exception ex)
         {
             Debug.LogError($"[MCP] Error sending chat message: {ex.Message}");
-            chatHistory[responseIndex] = new ChatMessage("Assistant", $"<b>Error:</b> {ex.Message}");
-        }
-        finally
-        {
-            Repaint();
+            UpdateLastAssistantMessage($"<b>Error:</b> {ex.Message}");
         }
     }
+
+    private void AddMessageToChat(string sender, string message, bool isProcessing = false)
+    {
+        var chatMessage = new ChatMessage(sender, message);
+        chatHistory.Add(chatMessage);
+
+        var messageLabel = new Label($"<b>{sender}:</b>\n{message}")
+        {
+            style =
+            {
+                whiteSpace = WhiteSpace.Normal,
+                paddingBottom = 5,
+                paddingLeft = 5,
+                paddingRight = 5,
+                paddingTop = 5,
+                color = Color.white
+            }
+        };
+        messageLabel.AddToClassList(sender == "You" ? "chat-message-user" : "chat-message-assistant");
+
+        if (isProcessing)
+        {
+            messageLabel.name = "processing-message";
+        }
+
+        chatScrollView.Add(messageLabel);
+        chatScrollView.ScrollTo(chatScrollView.contentContainer[chatScrollView.contentContainer.childCount - 1]);
+    }
+
+    private void UpdateLastAssistantMessage(string newMessage)
+    {
+        var processingLabel = chatScrollView.Q<Label>("processing-message");
+        if (processingLabel != null)
+        {
+            processingLabel.text = $"<b>Assistant:</b>\n{newMessage}";
+            processingLabel.name = ""; // remove the name so we don't find it again
+        }
+    }
+
 
     private async void InitialStatusCheck()
     {
@@ -249,7 +244,6 @@ public class MCPEditorWindow : EditorWindow
                         // Let's refresh everything.
                         await CheckLMStudioStatus();
                         await FetchAvailableModels();
-                        Repaint();
                     }
                 }
                 else
@@ -264,16 +258,16 @@ public class MCPEditorWindow : EditorWindow
             {
                 pythonServerStatus = "Not Connected";
                 lmstudioStatusMessage = "N/A (Python server down)";
-                Repaint();
             }
             pythonServerColor = Color.red;
         }
+        RedrawUI();
     }
 
     private async Task CheckLMStudioStatus()
     {
         lmstudioStatusMessage = "Checking...";
-        Repaint();
+        RedrawUI();
         try
         {
             string statusUrl = $"http://localhost:{MCP_PORT}/api/status";
@@ -297,16 +291,13 @@ public class MCPEditorWindow : EditorWindow
             lmstudioStatusMessage = $"<color=red>Error checking status.</color>";
             Debug.LogError($"[MCP] Failed to check LM Studio status: {ex.Message}");
         }
-        Repaint();
+        RedrawUI();
     }
 
     private async Task FetchAvailableModels()
     {
         if (fetchingModels) return;
         fetchingModels = true;
-        availableModels.Clear(); // Clear previous results
-        selectedModelIndex = -1;
-        Repaint();
 
         try
         {
@@ -329,20 +320,22 @@ public class MCPEditorWindow : EditorWindow
                         selectedModelIndex = 0;
                         lmstudioModel = availableModels[0];
                     }
+                    lmstudioModelDropdown.choices = availableModels;
+                    lmstudioModelDropdown.index = selectedModelIndex;
                 }
             }
         }
         catch (Exception ex)
         {
             Debug.LogError($"[MCP] Failed to fetch available models: {ex.Message}");
-            // Ensure the list is cleared on error
             availableModels.Clear();
             selectedModelIndex = -1;
+            lmstudioModelDropdown.choices = availableModels;
+            lmstudioModelDropdown.index = selectedModelIndex;
         }
         finally
         {
             fetchingModels = false;
-            Repaint();
         }
     }
 
@@ -352,7 +345,7 @@ public class MCPEditorWindow : EditorWindow
         {
             var configPayload = new { host = lmstudioHost, port = lmstudioPort, model = lmstudioModel, temperature = lmstudioTemperature };
             string jsonPayload = JsonConvert.SerializeObject(configPayload);
-            string url = $"http://localhost:{MCP_PORT}/api/configure";
+string url = $"http://localhost:{MCP_PORT}/api/configure";
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
             HttpResponseMessage response = await httpClient.PostAsync(url, content);
             if (response.IsSuccessStatusCode)

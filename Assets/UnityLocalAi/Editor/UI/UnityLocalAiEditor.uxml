@@ -1,0 +1,51 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <!-- Main container -->
+    <ui:VisualElement name="MainWindow" style="flex-grow: 1; flex-direction: column;">
+
+        <!-- Header -->
+        <ui:VisualElement name="Header" style="flex-direction: row; justify-content: space-between; align-items: center; padding: 10px; background-color: rgb(40, 40, 40); border-bottom-width: 1px; border-bottom-color: rgb(56, 56, 56);">
+            <ui:Label text="Unity Local AI" style="-unity-font-style: bold; font-size: 16px;" />
+        </ui:VisualElement>
+
+        <!-- Main Content Area -->
+        <ui:VisualElement name="Content" style="flex-grow: 1; flex-direction: row;">
+
+            <!-- Left Panel (Configuration) -->
+            <ui:VisualElement name="ConfigPanel" style="width: 300px; padding: 10px; border-right-width: 1px; border-right-color: rgb(56, 56, 56);">
+
+                <!-- Python Server Section -->
+                <ui:VisualElement name="PythonServerSection" style="margin-bottom: 10px; padding: 10px; border-radius: 5px; background-color: rgb(56, 56, 56);">
+                    <ui:Label text="Python Server" style="-unity-font-style: bold;" />
+                    <ui:VisualElement style="flex-direction: row; align-items: center; margin-top: 5px;">
+                        <ui:VisualElement name="PythonServerStatusIndicator" style="width: 10px; height: 10px; border-radius: 5px; background-color: yellow; margin-right: 5px;" />
+                        <ui:Label name="PythonServerStatusLabel" text="Checking..." />
+                    </ui:VisualElement>
+                    <ui:Button name="StartServerButton" text="Start Python Server" style="margin-top: 10px;" />
+                </ui:VisualElement>
+
+                <!-- LM Studio Section -->
+                <ui:VisualElement name="LMStudioSection" style="padding: 10px; border-radius: 5px; background-color: rgb(56, 56, 56);">
+                    <ui:Label text="LM Studio" style="-unity-font-style: bold;" />
+                    <ui:Label name="LMStudioStatusLabel" text="N/A" style="margin-top: 5px; white-space: normal;" />
+                    <ui:Button name="RefreshLMStatusButton" style="margin-top: 10px; width: 24px; height: 24px; background-image: url('project://database/Assets/UnityLocalAi/Editor/UI/Icons/nf-sync.png');" />
+                    <ui:TextField name="LMStudioHost" label="Host" />
+                    <ui:IntegerField name="LMStudioPort" label="Port" />
+                    <ui:Slider name="LMStudioTemperature" label="Temperature" low-value="0" high-value="1" />
+                    <ui:Button name="ApplyLMConfigButton" text="Apply &amp; Save" style="margin-top: 10px;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- Right Panel (Chat) -->
+            <ui:VisualElement name="ChatPanel" style="flex-grow: 1; flex-direction: column; padding: 10px;">
+                <ui:ScrollView name="ChatScrollView" style="flex-grow: 1; background-color: rgb(45, 45, 45); border-radius: 5px; padding: 10px;">
+                    <!-- Chat messages will be added here -->
+                </ui:ScrollView>
+                <ui:VisualElement name="InputArea" style="flex-direction: row; margin-top: 10px;">
+                    <ui:TextField name="ChatInput" multiline="true" style="flex-grow: 1; margin-right: 10px;" />
+                    <ui:Button name="SendButton" style="height: 40px; width: 40px; background-image: url('project://database/Assets/UnityLocalAi/Editor/UI/Icons/nf-send.png');" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

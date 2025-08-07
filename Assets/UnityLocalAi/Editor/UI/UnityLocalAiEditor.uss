@@ -1,0 +1,106 @@
+/* General Styles */
+.unity-label {
+    color: #E0E0E0;
+}
+
+.unity-button {
+    background-color: #4CAF50; /* A nice green */
+    color: white;
+    border-radius: 3px;
+    padding: 5px 10px;
+    border-width: 0;
+}
+
+.unity-button:hover {
+    background-color: #5CB85C;
+}
+
+.unity-text-field {
+    background-color: #333;
+    color: #E0E0E0;
+    border-color: #555;
+    border-radius: 3px;
+}
+
+/* Header */
+#Header {
+    background-color: #282828;
+    border-bottom-color: #383838;
+    border-bottom-width: 1px;
+    padding: 8px;
+}
+
+#Header .unity-label {
+    font-size: 18px;
+    -unity-font-style: bold;
+}
+
+/* Config Panel */
+#ConfigPanel {
+    background-color: #333333;
+    padding: 10px;
+    border-right-width: 1px;
+    border-right-color: #282828;
+}
+
+#PythonServerSection, #LMStudioSection {
+    background-color: #3C3C3C;
+    padding: 12px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+#PythonServerSection .unity-label, #LMStudioSection .unity-label {
+    margin-bottom: 5px;
+}
+
+#PythonServerSection .unity-button, #LMStudioSection .unity-button {
+    margin-top: 10px;
+}
+
+/* Chat Panel */
+#ChatPanel {
+    padding: 10px;
+}
+
+#ChatScrollView {
+    background-color: #2D2D2D;
+    border-radius: 5px;
+    padding: 10px;
+    flex-grow: 1;
+}
+
+#InputArea {
+    margin-top: 10px;
+}
+
+#ChatInput {
+    flex-grow: 1;
+    margin-right: 10px;
+    min-height: 40px;
+}
+
+#SendButton {
+    height: 42px; /* Match text area height */
+}
+
+/* Custom styles for chat messages */
+.chat-message-user {
+    background-color: #0275d8;
+    color: white;
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    align-self: flex-end; /* Align to the right */
+    max-width: 80%;
+}
+
+.chat-message-assistant {
+    background-color: #5C5C5C;
+    color: white;
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    align-self: flex-start; /* Align to the left */
+    max-width: 80%;
+}
