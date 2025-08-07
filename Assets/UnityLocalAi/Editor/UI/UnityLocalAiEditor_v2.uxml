@@ -44,8 +44,8 @@
                     <ui:Button name="RefreshLMStatusButton" class="icon-button" />
                     <ui:TextField name="LMStudioHost" label="Host" />
                     <ui:IntegerField name="LMStudioPort" label="Port" />
-                    <ui:VisualElement name="ModelDropdownContainer" style="flex-direction: row; align-items: center;">
-                        <!-- PopupField will be inserted here from C# -->
+                    <ui:VisualElement style="flex-direction: row; align-items: center;">
+                        <uie:DropdownField name="LMStudioModel" label="Model" style="flex-grow: 1;"/>
                         <ui:Button name="RefreshModelsButton" text="Refresh" style="margin-left: 5px;"/>
                     </ui:VisualElement>
                     <ui:VisualElement class="slider-with-field">

@@ -43,7 +43,7 @@ namespace UnityLocalAi
         private Button refreshLMStatusButton;
         private TextField lmstudioHostField;
         private IntegerField lmstudioPortField;
-        private PopupField<string> lmstudioModelDropdown;
+        private DropdownField lmstudioModelDropdown;
         private Slider lmstudioTemperatureSlider;
         private FloatField lmstudioTemperatureField;
         private Button applyLMConfigButton;
@@ -121,19 +121,10 @@ namespace UnityLocalAi
             pythonServerStatusLabel = rootVisualElement.Q<Label>("PythonServerStatusLabel");
             startServerButton = rootVisualElement.Q<Button>("StartServerButton");
             lmstudioStatusLabel = rootVisualElement.Q<Label>("LMStudioStatusLabel");
-            // The old refresh button is gone, we will get the new one.
-            // refreshLMStatusButton = rootVisualElement.Q<Button>("RefreshLMStatusButton");
             lmstudioHostField = rootVisualElement.Q<TextField>("LMStudioHost");
             lmstudioPortField = rootVisualElement.Q<IntegerField>("LMStudioPort");
-
-            // Create the popup field programmatically
-            var modelDropdownContainer = rootVisualElement.Q<VisualElement>("ModelDropdownContainer");
-            lmstudioModelDropdown = new PopupField<string>("Model", availableModels, 0);
-            lmstudioModelDropdown.style.flexGrow = 1;
-            modelDropdownContainer.Insert(0, lmstudioModelDropdown);
+            lmstudioModelDropdown = rootVisualElement.Q<DropdownField>("LMStudioModel");
             refreshLMStatusButton = rootVisualElement.Q<Button>("RefreshModelsButton");
-
-
             lmstudioTemperatureSlider = rootVisualElement.Q<Slider>("LMStudioTemperature");
             lmstudioTemperatureField = rootVisualElement.Q<FloatField>("LMStudioTemperatureField");
             applyLMConfigButton = rootVisualElement.Q<Button>("ApplyLMConfigButton");
@@ -358,12 +349,24 @@ namespace UnityLocalAi
                     response.EnsureSuccessStatusCode();
                     string json = await response.Content.ReadAsStringAsync();
                     var models = JsonConvert.DeserializeObject<List<string>>(json);
+
+                    if (lmstudioModelDropdown == null)
+                    {
+                        Debug.LogError("[MCP] Model dropdown is null, cannot fetch models.");
+                        return;
+                    }
+
                     if (models != null && models.Count > 0)
                     {
                         availableModels = models;
-                        var idx = availableModels.IndexOf(lmstudioModel);
                         lmstudioModelDropdown.choices = availableModels;
+                        var idx = availableModels.IndexOf(lmstudioModel);
                         lmstudioModelDropdown.index = idx >= 0 ? idx : 0;
+                    }
+                    else
+                    {
+                        lmstudioModelDropdown.choices = new List<string> { "No models found" };
+                        lmstudioModelDropdown.index = 0;
                     }
                 }
             }
@@ -371,6 +374,11 @@ namespace UnityLocalAi
             {
                 Debug.LogError($"[MCP] Failed to fetch models: {ex.Message}");
                 SetServerStatus(false, "Model Fetch Error");
+                if (lmstudioModelDropdown != null)
+                {
+                    lmstudioModelDropdown.choices = new List<string> { "Error fetching models" };
+                    lmstudioModelDropdown.index = 0;
+                }
             }
             finally { fetchingModels = false; }
         }
