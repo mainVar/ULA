@@ -157,22 +157,34 @@ _memory_manager: Optional[MemoryManager] = None
 def extract_json_from_response(text: str) -> List[Dict[str, Any]]:
     """
     Extracts a JSON array of command objects from a string.
-    This is designed to find a single, potentially multi-line, JSON array.
+    It handles cases where the JSON is wrapped in markdown code blocks.
     """
-    # Regex to find a JSON array that starts with '[' and ends with ']'
-    json_pattern = re.compile(r"(\[[\s\S]*?\])", re.DOTALL)
-    match = json_pattern.search(text)
+    # Pattern to find a JSON block within ```json ... ```
+    pattern = re.compile(r"```json\s*(\[[\s\S]*?\])\s*```", re.DOTALL)
+    match = pattern.search(text)
 
-    if not match:
+    json_string = ""
+    if match:
+        # If we find a markdown block, use its content
+        json_string = match.group(1)
+    else:
+        # Fallback: try to find a raw JSON array
+        pattern = re.compile(r"(\[[\s\S]*?\])", re.DOTALL)
+        match = pattern.search(text)
+        if match:
+            json_string = match.group(1)
+
+    if not json_string:
         logger.warning("No JSON array found in LLM response.")
         return []
 
-    json_string = match.group(1)
     try:
+        # Clean up the string just in case
+        json_string = json_string.strip()
         commands = json.loads(json_string)
         return commands
-    except json.JSONDecodeError:
-        logger.error(f"Could not decode JSON array from response: {json_string}")
+    except json.JSONDecodeError as e:
+        logger.error(f"Could not decode JSON array. Error: {e}. Raw JSON string was: {json_string}")
         return []
 
 
