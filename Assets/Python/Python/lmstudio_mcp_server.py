@@ -218,28 +218,41 @@ def extract_json_from_response(text: str) -> List[Dict[str, Any]]:
                 logger.warning("Found fenced code block, but failed to parse JSON: %s", e)
 
 
-        # Strategy 3: Find the last potential start of a JSON array or object.
-        # This is robust against conversational text that might contain JSON-like strings.
+        # Strategy 3: Find the last potential start of a JSON array.
+        # Since the prompt asks for a JSON array, this is the most reliable signal.
         last_bracket_pos = text_after_think.rfind('[')
-        last_brace_pos = text_after_think.rfind('{')
-
-        start_pos = -1
-        if last_bracket_pos != -1 and last_bracket_pos > last_brace_pos:
-            start_pos = last_bracket_pos
-        elif last_brace_pos != -1:
-            start_pos = last_brace_pos
-
-        if start_pos != -1:
-            json_text = text_after_think[start_pos:]
+        if last_bracket_pos != -1:
+            # Attempt to parse from this point to the end of the string.
+            # We also need to find the matching closing bracket to avoid "Extra data" errors.
+            json_text = text_after_think[last_bracket_pos:]
             try:
-                data = json.loads(json_text)
-                logger.info("Successfully parsed JSON from last found bracket/brace.")
-                return data if isinstance(data, list) else [data]
+                # By loading and immediately dumping, we isolate the first valid JSON document.
+                parsed_json = json.loads(json_text)
+                logger.info("Successfully parsed JSON from last found '[' bracket.")
+                return parsed_json if isinstance(parsed_json, list) else [parsed_json]
             except json.JSONDecodeError as e:
-                logger.warning(
-                    "Could not parse JSON from last found bracket/brace at pos %d: %s",
-                    start_pos, e
-                )
+                # The slice might have extra data at the end. Let's try to find the matching bracket.
+                open_brackets = 0
+                end_pos = -1
+                for i, char in enumerate(json_text):
+                    if char == '[':
+                        open_brackets += 1
+                    elif char == ']':
+                        open_brackets -= 1
+                        if open_brackets == 0:
+                            end_pos = i + 1
+                            break
+
+                if end_pos != -1:
+                    clean_json_text = json_text[:end_pos]
+                    try:
+                        parsed_json = json.loads(clean_json_text)
+                        logger.info("Successfully parsed JSON by finding matching bracket.")
+                        return parsed_json if isinstance(parsed_json, list) else [parsed_json]
+                    except json.JSONDecodeError as e2:
+                         logger.warning("Failed to parse cleaned JSON slice: %s", e2)
+                else:
+                    logger.warning("Could not find matching bracket for last '['. Parser error was: %s", e)
 
         # Strategy 4: Fallback to the original greedy regex search as a last resort.
         match = re.search(r"(\[[\s\S]*\]|\{[\s\S]*\})", text_after_think.strip())
