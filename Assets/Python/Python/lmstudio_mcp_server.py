@@ -155,28 +155,25 @@ _memory_manager: Optional[MemoryManager] = None
 
 # --- JSON Command Parser (Enhanced for ReAct) ---
 def extract_json_from_response(text: str) -> List[Dict[str, Any]]:
-    """Extracts JSON command objects from a string."""
-    # This regex is designed to find JSON objects, which are the format for our commands.
-    # It looks for patterns that start with { and end with }, and are properly balanced.
-    # It's a common pattern for extracting JSON from LLM text responses.
-    json_pattern = re.compile(r"(\{.*?\})(?=\s*\{|\s*$)", re.DOTALL)
-    matches = json_pattern.findall(text)
+    """
+    Extracts a JSON array of command objects from a string.
+    This is designed to find a single, potentially multi-line, JSON array.
+    """
+    # Regex to find a JSON array that starts with '[' and ends with ']'
+    json_pattern = re.compile(r"(\[[\s\S]*?\])", re.DOTALL)
+    match = json_pattern.search(text)
 
-    commands = []
-    for match in matches:
-        try:
-            # Clean up the match by removing potential newlines and backticks
-            clean_match = match.strip().replace('\n', '').replace('`', '')
-            data = json.loads(clean_match)
-            commands.append(data)
-        except json.JSONDecodeError:
-            logger.warning(f"Could not decode JSON from match: {match}")
-            continue
+    if not match:
+        logger.warning("No JSON array found in LLM response.")
+        return []
 
-    if not commands:
-        logger.warning("No JSON objects found in LLM response.")
-
-    return commands
+    json_string = match.group(1)
+    try:
+        commands = json.loads(json_string)
+        return commands
+    except json.JSONDecodeError:
+        logger.error(f"Could not decode JSON array from response: {json_string}")
+        return []
 
 
 # --- LM Studio Wrapper ---
@@ -291,77 +288,54 @@ async def get_status():
         "model": config["model"],
     }
 
-@app.post("/api/process", summary="Process a ReAct Step")
+@app.post("/api/process", summary="Process a user prompt to generate Unity commands")
 async def process(request: Dict[str, Any]):
     """
-    Processes a single step in the ReAct loop.
-    Receives the user's prompt and history, returns the next thought and action.
+    Receives a prompt, generates a thought process and a JSON array of commands,
+    and returns them in a format the Unity client expects.
     """
     prompt = request.get("prompt")
-    history = request.get("history", [])
-
     if not prompt:
         raise HTTPException(status_code=400, detail="Missing 'prompt' in request.")
     if _lmstudio_connection is None:
         raise HTTPException(status_code=503, detail="Not connected to LM Studio.")
 
-    # Build the context for the LLM
-    # 1. Start with the base system prompt
-    # 2. Add memories from ChromaDB
-    # 3. Add the history of the current interaction
-    # 4. Add the final user prompt
+    # Build the context for the LLM.
+    # The new prompt structure guides the LLM to produce a thought process
+    # and then a single JSON array of commands.
+    context = config["system_prompt"] # The system prompt already defines the JSON output format
 
-    context = config["react_system_prompt"] + "\n" + config["system_prompt"]
-
-    # Add relevant memories
+    # Add relevant memories from ChromaDB
     if _memory_manager:
-        memories = _memory_manager.search_memory(prompt, n_results=3)
-        if memories:
-            context += "\n--- Relevant Memories ---\n"
-            for mem in memories:
-                context += f"- {mem['document']}\n"
-            context += "-------------------------\n"
-
-    # Add history
-    for item in history:
-        context += f"\n<thought>{item.get('thought', '')}</thought>\n"
-        action = item.get('action', {})
-        if action and action.get('function'):
-            context += f"Action: {action['function']}\n"
-            context += f"Action Input: {json.dumps(action.get('args', {}))}\n"
-            context += f"Observation: {item.get('observation', 'No observation provided.')}\n"
-
-    context += f"\nUser Request: {prompt}\n<thought>"
-
-    llm_response = await _lmstudio_connection.generate(context, system_prompt=None) # System prompt is already in the context
-
-    # Parse Thought and Action from the response
-    thought_match = re.search(r"<thought>([\s\S]*?)</thought>", llm_response, re.DOTALL)
-    action_match = re.search(r"Action:\s*(\w+)", llm_response)
-    input_match = re.search(r"Action Input:\s*(\{.*\})", llm_response, re.DOTALL)
-
-    thought = thought_match.group(1).strip() if thought_match else ""
-    action_name = action_match.group(1).strip() if action_match else None
-    action_args_str = input_match.group(1).strip() if input_match else "{}"
-
-    try:
-        action_args = json.loads(action_args_str)
-    except json.JSONDecodeError:
-        logger.error(f"Could not parse Action Input JSON: {action_args_str}")
-        action_args = {}
-        # If parsing fails, we might want to tell the LLM it made a mistake.
-        # For now, we'll just return an empty action.
-        action_name = "error"
-        thought += "\n(System: Failed to parse Action Input. Please provide valid JSON.)"
+        try:
+            memories = _memory_manager.search_memory(prompt, n_results=3)
+            if memories:
+                context += "\n\n--- Relevant Memories ---\n"
+                for mem in memories:
+                    context += f"- {mem['document']}\n"
+                context += "-------------------------\n"
+        except Exception as e:
+            logger.error(f"Failed to search memory, continuing without it. Error: {e}")
 
 
+    # Add the user's direct request
+    context += f"\nBased on the tools and memories above, fulfill the following request:\nUser Request: {prompt}"
+    context += "\n\nFirst, provide a brief thought process explaining your plan. Then, provide the complete JSON array of commands to execute the plan. Your output must be a single response containing both the thought and the JSON."
+
+
+    llm_response = await _lmstudio_connection.generate(context, system_prompt=None)
+
+    # The entire LLM output is considered the "thought process" or "llm_response"
+    # The commands are extracted from this response.
+    commands = extract_json_from_response(llm_response)
+
+    if not commands:
+        logger.warning(f"No commands were extracted from the LLM response. Raw response: {llm_response}")
+
+    # Return the response in the format expected by the Unity client
     return {
-        "thought": thought,
-        "action": {
-            "function": action_name,
-            "args": action_args
-        } if action_name else None,
-        "raw_response": llm_response
+        "llm_response": llm_response,
+        "commands": commands
     }
 
 

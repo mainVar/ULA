@@ -5,3 +5,4 @@ chromadb-client
 langchain
 tiktoken
 python-dotenv
+sentence-transformers
