@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  chromadb:
+    image: chromadb/chroma
+    container_name: chromadb_server
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/.chroma/index
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+
+volumes:
+  chroma_data:
+    driver: local

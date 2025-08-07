@@ -1,3 +1,7 @@
 uvicorn
 fastapi
 aiohttp
+chromadb-client
+langchain
+tiktoken
+python-dotenv
