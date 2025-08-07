@@ -88,12 +88,18 @@ Here are the available functions and their arguments:
      - name (string, required): The name of the script (without the .cs extension).
      - path (string, optional): The folder path to the script. Defaults to "Assets/Scripts/".
 
+   - Example (Delete a script):
+     [{"function": "manage_script", "args": {"action": "delete", "name": "OldController", "path": "Assets/Scripts/Old/"}}]
+
 3. manage_shader
    - Description: Manages shader files (read, delete). For creating/updating, use `write_file`.
    - args:
      - action (string, required): The operation. One of: 'read', 'delete'.
      - name (string, required): The name of the shader (without the .shader extension).
      - path (string, optional): The folder path to the shader. Defaults to "Assets/Shaders/".
+
+   - Example (Delete a shader):
+     [{"function": "manage_shader", "args": {"action": "delete", "name": "OldShader"}}]
 
 --------------------------------------------------------------------------------
 -- GAME OBJECTS & HIERARCHY
@@ -116,22 +122,49 @@ Here are the available functions and their arguments:
      - components_to_remove (array of strings, optional): A list of component names to remove.
      - component_properties (object, optional): A dictionary to set component properties. Keys are component names, values are dictionaries of properties and their values.
      - set_active (boolean, optional): Set the active state of the GameObject.
+     - save_as_prefab (boolean, optional): When creating an object, save it as a prefab.
+     - prefab_path (string, optional): The path to save the prefab, e.g., "Assets/Prefabs/MyPrefab.prefab".
 
-   - Example (Create a complex object and attach a script):
+   - Example (Create a complex object):
      [
-       {
-         "function": "write_file",
-         "args": {
-           "path": "Assets/Scripts/Player.cs",
-           "contents": "using UnityEngine; public class Player : MonoBehaviour {}"
-         }
-       },
        {
          "function": "manage_gameobject",
          "args": {
            "action": "create",
-           "name": "PlayerObject",
-           "components_to_add": ["Player"]
+           "name": "Player",
+           "position": [0, 1, 0],
+           "tag": "Player",
+           "components_to_add": ["Rigidbody", "CapsuleCollider", "PlayerController"],
+           "component_properties": {
+             "Rigidbody": {
+               "useGravity": true,
+               "constraints": "FreezeRotation"
+             }
+           }
+         }
+       }
+     ]
+
+   - Example (Modify an object):
+     [
+       {
+         "function": "manage_gameobject",
+         "args": {
+           "action": "modify",
+           "target": "Player",
+           "scale": [1.5, 1.5, 1.5],
+           "layer": "PlayerLayer"
+         }
+       }
+     ]
+
+   - Example (Delete an object):
+     [
+       {
+         "function": "manage_gameobject",
+         "args": {
+           "action": "delete",
+           "target": "OldEnemy"
          }
        }
      ]
@@ -165,6 +198,35 @@ Here are the available functions and their arguments:
        }
      ]
 
+   - Example (Apply a material to an object):
+     [
+       {
+         "function": "manage_gameobject",
+         "args": {
+           "action": "modify",
+           "target": "Player",
+           "component_properties": {
+             "MeshRenderer": {
+               "sharedMaterial": "Assets/Materials/Red.mat"
+             }
+           }
+         }
+       }
+     ]
+
+   - Example (Create a Prefab from a GameObject):
+     [
+       {
+         "function": "manage_gameobject",
+         "args": {
+           "action": "modify",
+           "target": "Player",
+           "save_as_prefab": true,
+           "prefab_path": "Assets/Prefabs/Player.prefab"
+         }
+       }
+     ]
+
 --------------------------------------------------------------------------------
 -- SCENE MANAGEMENT
 --------------------------------------------------------------------------------
@@ -175,6 +237,9 @@ Here are the available functions and their arguments:
      - action (string, required): The operation. One of: 'new', 'save', 'load'.
      - name (string, optional): The name of the scene for 'load' or 'save' actions. Include the path from 'Assets/', e.g., "Scenes/Level1".
 
+   - Example:
+     [{"function": "manage_scene", "args": {"action": "save", "name": "Scenes/MainScene"}}]
+
 --------------------------------------------------------------------------------
 -- EDITOR & CONSOLE
 --------------------------------------------------------------------------------
@@ -184,16 +249,25 @@ Here are the available functions and their arguments:
    - args:
      - action (string, required): The operation. One of: 'play', 'pause', 'stop', 'get_state'.
 
+   - Example:
+     [{"function": "manage_editor", "args": {"action": "play"}}]
+
 8. read_console
    - Description: Reads messages from the Unity Editor console.
    - args:
      - action (string, required): The operation. One of: 'get', 'clear'.
      - types (array of strings, optional): Message types to get. One or more of: 'error', 'warning', 'log'. Defaults to all.
 
+   - Example:
+     [{"function": "read_console", "args": {"action": "get", "types": ["error", "warning"]}}]
+
 9. execute_menu_item
    - Description: Executes a Unity Editor menu item by its path.
    - args:
      - menu_path (string, required): The full path of the menu item (e.g., "File/Save Project", "Window/AI/NavMesh").
+
+   - Example:
+     [{"function": "execute_menu_item", "args": {"menu_path": "File/Save Project"}}]
 """,
 }
 
@@ -415,9 +489,29 @@ async def process_request(request: Dict[str, Any]):
     llm_resp = await _lmstudio_connection.generate(prompt, config["system_prompt"])
     all_commands = extract_json_from_response(llm_resp)
 
-    # Separate write_file commands from others
-    write_commands = [cmd for cmd in all_commands if cmd.get("function") == "write_file"]
-    other_commands = [cmd for cmd in all_commands if cmd.get("function") != "write_file"]
+    # Separate write_file commands from others, with safety checks
+    write_commands = []
+    other_commands = []
+    if isinstance(all_commands, list):
+        for cmd in all_commands:
+            if isinstance(cmd, dict):
+                if cmd.get("function") == "write_file":
+                    write_commands.append(cmd)
+                else:
+                    other_commands.append(cmd)
+            else:
+                logger.warning(
+                    "Ignoring invalid, non-dictionary item in command list: %s",
+                    str(cmd)
+                )
+    elif all_commands:
+        # If it's not a list but is truthy, it's unexpected. Log it.
+        logger.warning(
+            "Received unexpected data format from parser, expected a list but got %s. Value: %s",
+            type(all_commands).__name__,
+            str(all_commands)
+        )
+
 
     # Execute file writing commands on the server
     if write_commands:
