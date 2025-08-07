@@ -13,6 +13,8 @@ from typing import Dict, Any, List
 import uvicorn
 import json
 import re
+import os
+from pathlib import Path
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -44,58 +46,60 @@ Each command object in the JSON array must have the following structure:
 Here are the available functions and their arguments:
 
 --------------------------------------------------------------------------------
--- SCRIPTING & SHADERS
+-- FILE I/O (Primary Method for Scripts & Shaders)
 --------------------------------------------------------------------------------
 
-1. manage_script
-   - Description: Manages C# script files in the Unity project (create, read, update, delete).
+1. write_file
+   - Description: Creates or overwrites a file with the given content. This is the PREFERRED method for creating and updating scripts, shaders, and other text-based assets.
    - args:
-     - action (string, required): The operation to perform. One of: 'create', 'read', 'update', 'delete'.
-     - name (string, required): The name of the script (without the .cs extension).
-     - path (string, optional): The folder path to the script. Defaults to "Assets/Scripts/".
-     - contents (string, optional): The C# code for 'create' or 'update' actions.
-     - namespace (string, optional): The namespace for the script.
-     - script_type (string, optional): A hint for the class type, e.g., 'MonoBehaviour', 'ScriptableObject'.
+     - path (string, required): The full path of the file, relative to the project's root (e.g., "Assets/Scripts/PlayerController.cs").
+     - contents (string, required): The full content of the file.
 
-   - Example:
+   - Example (Create a C# Script):
      [
        {
-         "function": "manage_script",
+         "function": "write_file",
          "args": {
-           "action": "create",
-           "name": "PlayerController",
-           "path": "Assets/Scripts/Player/",
+           "path": "Assets/Scripts/PlayerController.cs",
            "contents": "using UnityEngine;\\n\\npublic class PlayerController : MonoBehaviour {\\n    public float speed = 5.0f;\\n    void Update() {\\n        float horizontal = Input.GetAxis(\\"Horizontal\\");\\n        transform.Translate(new Vector3(horizontal, 0, 0) * speed * Time.deltaTime);\\n    }\\n}"
          }
        }
      ]
 
-2. manage_shader
-   - Description: Manages shader files in the Unity project.
-   - args:
-     - action (string, required): The operation to perform. One of: 'create', 'read', 'update', 'delete'.
-     - name (string, required): The name of the shader (without the .shader extension).
-     - path (string, optional): The folder path to the shader. Defaults to "Assets/Shaders/".
-     - contents (string, optional): The shader code for 'create' or 'update' actions.
-
-   - Example:
+   - Example (Create a Shader):
      [
        {
-         "function": "manage_shader",
+         "function": "write_file",
          "args": {
-           "action": "create",
-           "name": "SimpleUnlit",
-           "path": "Assets/Shaders/",
+           "path": "Assets/Shaders/SimpleUnlit.shader",
            "contents": "Shader \\"Unlit/SimpleUnlit\\" { Properties { _Color (\\"Color\\", Color) = (1,1,1,1) } SubShader { Pass { CGPROGRAM #pragma vertex vert #pragma fragment frag #include \\"UnityCG.cginc\\" struct appdata { float4 vertex : POSITION; }; struct v2f { float4 vertex : SV_POSITION; }; fixed4 _Color; v2f vert (appdata v) { v2f o; o.vertex = UnityObjectToClipPos(v.vertex); return o; } fixed4 frag (v2f i) : SV_Target { return _Color; } ENDCG } } }"
          }
        }
      ]
 
 --------------------------------------------------------------------------------
+-- SCRIPTING & SHADERS (Management)
+--------------------------------------------------------------------------------
+
+2. manage_script
+   - Description: Manages C# script files (read, delete). For creating/updating, use `write_file`.
+   - args:
+     - action (string, required): The operation. One of: 'read', 'delete'.
+     - name (string, required): The name of the script (without the .cs extension).
+     - path (string, optional): The folder path to the script. Defaults to "Assets/Scripts/".
+
+3. manage_shader
+   - Description: Manages shader files (read, delete). For creating/updating, use `write_file`.
+   - args:
+     - action (string, required): The operation. One of: 'read', 'delete'.
+     - name (string, required): The name of the shader (without the .shader extension).
+     - path (string, optional): The folder path to the shader. Defaults to "Assets/Shaders/".
+
+--------------------------------------------------------------------------------
 -- GAME OBJECTS & HIERARCHY
 --------------------------------------------------------------------------------
 
-3. manage_gameobject
+4. manage_gameobject
    - Description: The main tool for creating, finding, modifying, and deleting GameObjects and their components.
    - args:
      - action (string, required): The operation. One of: 'create', 'find', 'modify', 'delete', 'add_component', 'remove_component', 'get_components'.
@@ -113,46 +117,21 @@ Here are the available functions and their arguments:
      - component_properties (object, optional): A dictionary to set component properties. Keys are component names, values are dictionaries of properties and their values.
      - set_active (boolean, optional): Set the active state of the GameObject.
 
-   - Example (Create a complex object):
+   - Example (Create a complex object and attach a script):
      [
+       {
+         "function": "write_file",
+         "args": {
+           "path": "Assets/Scripts/Player.cs",
+           "contents": "using UnityEngine; public class Player : MonoBehaviour {}"
+         }
+       },
        {
          "function": "manage_gameobject",
          "args": {
            "action": "create",
-           "name": "Player",
-           "position": [0, 1, 0],
-           "tag": "Player",
-           "components_to_add": ["Rigidbody", "CapsuleCollider", "PlayerController"],
-           "component_properties": {
-             "Rigidbody": {
-               "useGravity": true,
-               "constraints": "FreezeRotation"
-             }
-           }
-         }
-       }
-     ]
-
-   - Example (Modify an object):
-     [
-       {
-         "function": "manage_gameobject",
-         "args": {
-           "action": "modify",
-           "target": "Player",
-           "scale": [1.5, 1.5, 1.5],
-           "layer": "PlayerLayer"
-         }
-       }
-     ]
-
-   - Example (Delete an object):
-     [
-       {
-         "function": "manage_gameobject",
-         "args": {
-           "action": "delete",
-           "target": "OldEnemy"
+           "name": "PlayerObject",
+           "components_to_add": ["Player"]
          }
        }
      ]
@@ -161,7 +140,7 @@ Here are the available functions and their arguments:
 -- ASSETS & PREFABS
 --------------------------------------------------------------------------------
 
-4. manage_asset
+5. manage_asset
    - Description: Manages project assets like Materials, Prefabs, and Folders.
    - args:
      - action (string, required): The operation. One of: 'create', 'get_info', 'modify', 'delete', 'create_folder', 'duplicate', 'move', 'rename'.
@@ -186,109 +165,35 @@ Here are the available functions and their arguments:
        }
      ]
 
-   - Example (Apply a material to an object):
-     [
-       {
-         "function": "manage_gameobject",
-         "args": {
-           "action": "modify",
-           "target": "Player",
-           "component_properties": {
-             "MeshRenderer": {
-               "sharedMaterial": "Assets/Materials/Red.mat"
-             }
-           }
-         }
-       }
-     ]
-
-   - Example (Create a Prefab):
-     [
-       {
-         "function": "manage_gameobject",
-         "args": {
-           "action": "create",
-           "name": "Coin",
-           "primitive_type": "Cylinder",
-           "position": [10, 1, 5],
-           "scale": [0.5, 0.1, 0.5],
-           "save_as_prefab": true,
-           "prefab_path": "Assets/Prefabs/Coin.prefab"
-         }
-       }
-     ]
-
 --------------------------------------------------------------------------------
 -- SCENE MANAGEMENT
 --------------------------------------------------------------------------------
 
-5. manage_scene
+6. manage_scene
    - Description: Manages scenes (new, save, load).
    - args:
      - action (string, required): The operation. One of: 'new', 'save', 'load'.
      - name (string, optional): The name of the scene for 'load' or 'save' actions. Include the path from 'Assets/', e.g., "Scenes/Level1".
 
-   - Example:
-     [
-       {
-         "function": "manage_scene",
-         "args": {
-           "action": "save",
-           "name": "Scenes/MainScene"
-         }
-       }
-     ]
-
 --------------------------------------------------------------------------------
 -- EDITOR & CONSOLE
 --------------------------------------------------------------------------------
 
-6. manage_editor
+7. manage_editor
    - Description: Controls the Unity Editor's state.
    - args:
      - action (string, required): The operation. One of: 'play', 'pause', 'stop', 'get_state'.
 
-   - Example:
-     [
-       {
-         "function": "manage_editor",
-         "args": {
-           "action": "play"
-         }
-       }
-     ]
-
-7. read_console
+8. read_console
    - Description: Reads messages from the Unity Editor console.
    - args:
      - action (string, required): The operation. One of: 'get', 'clear'.
      - types (array of strings, optional): Message types to get. One or more of: 'error', 'warning', 'log'. Defaults to all.
 
-   - Example:
-     [
-       {
-         "function": "read_console",
-         "args": {
-           "action": "get",
-           "types": ["error", "warning"]
-         }
-       }
-     ]
-
-8. execute_menu_item
+9. execute_menu_item
    - Description: Executes a Unity Editor menu item by its path.
    - args:
      - menu_path (string, required): The full path of the menu item (e.g., "File/Save Project", "Window/AI/NavMesh").
-
-   - Example:
-     [
-       {
-         "function": "execute_menu_item",
-         "args": {
-           "menu_path": "File/Save Project"
-         }
-       }
-     ]
 """,
 }
 
@@ -317,6 +222,51 @@ def extract_json_from_response(text: str) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error("Failed to parse JSON from LLM response: %s", e, exc_info=True)
         return []
+
+# --- File I/O Operations ---
+def execute_write_file(command: Dict[str, Any]) -> None:
+    """Executes the write_file command, writing content to a specified path."""
+    args = command.get("args", {})
+    path_str = args.get("path")
+    contents = args.get("contents")
+
+    if not path_str or not contents:
+        logger.error("`write_file` command is missing `path` or `contents`.")
+        return
+
+    try:
+        # Security: Ensure the path is within the project's 'Assets' directory.
+        # This prevents writing to arbitrary locations on the file system.
+        project_root = Path(os.getcwd()).resolve()
+        # Navigate up from Assets/Python/Python to the project root
+        if "Assets" in project_root.parts:
+            while project_root.name != "Assets":
+                project_root = project_root.parent
+            project_root = project_root.parent
+
+
+        target_path = (project_root / path_str).resolve()
+
+        # Double-check that the resolved path is still within the project root.
+        if project_root not in target_path.parents and target_path != project_root:
+            logger.error(
+                "Security risk: Attempted to write to a path outside the project root: %s",
+                target_path,
+            )
+            return
+
+        # Create parent directories if they don't exist
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write the file
+        with open(target_path, "w", encoding="utf-8") as f:
+            f.write(contents)
+
+        logger.info("Successfully wrote file to %s", target_path)
+
+    except Exception as e:
+        logger.error("Failed to execute `write_file` command: %s", e, exc_info=True)
+
 
 # --- LM Studio Wrapper ---
 class LMStudioConnection:
@@ -414,9 +364,20 @@ async def process_request(request: Dict[str, Any]):
         raise HTTPException(status_code=503, detail="Not connected to LM Studio.")
 
     llm_resp = await _lmstudio_connection.generate(prompt, config["system_prompt"])
-    commands = extract_json_from_response(llm_resp)
+    all_commands = extract_json_from_response(llm_resp)
 
-    return {"status": "success", "llm_response": llm_resp, "commands": commands}
+    # Separate write_file commands from others
+    write_commands = [cmd for cmd in all_commands if cmd.get("function") == "write_file"]
+    other_commands = [cmd for cmd in all_commands if cmd.get("function") != "write_file"]
+
+    # Execute file writing commands on the server
+    if write_commands:
+        logger.info("Executing %d `write_file` command(s)...", len(write_commands))
+        for command in write_commands:
+            execute_write_file(command)
+
+    # Return other commands to be executed by Unity
+    return {"status": "success", "llm_response": llm_resp, "commands": other_commands}
 
 
 @app.get("/api/status")
