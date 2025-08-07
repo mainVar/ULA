@@ -13,6 +13,13 @@
             <!-- Left Panel (Configuration) -->
             <ui:VisualElement name="ConfigPanel" style="width: 300px; padding: 10px; border-right-width: 1px; border-right-color: rgb(56, 56, 56);">
 
+                <!-- Chat History Section -->
+                <ui:VisualElement name="ChatHistorySection" style="margin-bottom: 10px; padding: 10px; border-radius: 5px; background-color: rgb(56, 56, 56);">
+                    <ui:Label text="Chat History" style="-unity-font-style: bold;" />
+                    <ui:Button name="NewChatButton" text="New Chat" style="margin-top: 10px;" />
+                    <ui:ListView name="ChatHistoryList" style="height: 150px; margin-top: 10px;" />
+                </ui:VisualElement>
+
                 <!-- Python Server Section -->
                 <ui:VisualElement name="PythonServerSection" style="margin-bottom: 10px; padding: 10px; border-radius: 5px; background-color: rgb(56, 56, 56);">
                     <ui:Label text="Python Server" style="-unity-font-style: bold;" />
@@ -30,7 +37,10 @@
                     <ui:Button name="RefreshLMStatusButton" style="margin-top: 10px; width: 24px; height: 24px; background-image: url('project://database/Assets/UnityLocalAi/Editor/UI/Icons/nf-sync.png');" />
                     <ui:TextField name="LMStudioHost" label="Host" />
                     <ui:IntegerField name="LMStudioPort" label="Port" />
-                    <ui:Slider name="LMStudioTemperature" label="Temperature" low-value="0" high-value="1" />
+                    <ui:VisualElement style="flex-direction: row; align-items: center;">
+                        <ui:Slider name="LMStudioTemperature" label="Temperature" low-value="0" high-value="1" style="flex-grow: 1;" />
+                        <ui:FloatField name="LMStudioTemperatureField" style="width: 50px; margin-left: 5px;" />
+                    </ui:VisualElement>
                     <ui:Button name="ApplyLMConfigButton" text="Apply &amp; Save" style="margin-top: 10px;" />
                 </ui:VisualElement>
             </ui:VisualElement>

@@ -5,24 +5,21 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Debug = UnityEngine.Debug;
 using UnityEditor.UIElements;
 using UnityEngine.UIElements;
-using UnityLocalAi; // <-- Add the new namespace
-
+using UnityLocalAi;
+using System.Linq;
 
 public class MCPEditorWindow : EditorWindow
 {
     // --- UI State & Configuration ---
     private string pythonServerStatus = "Checking...";
     private Color pythonServerColor = Color.yellow;
-
     private string lmstudioStatusMessage = "N/A";
-
     private string lmstudioHost = "localhost";
     private int lmstudioPort = 1234;
     private string lmstudioModel = "qwen/qwen3-14b";
@@ -34,7 +31,8 @@ public class MCPEditorWindow : EditorWindow
     private bool fetchingModels = false;
 
     // --- Chat ---
-    private List<ChatMessage> chatHistory = new List<ChatMessage>();
+    private ChatSession currentSession;
+    private List<ChatSession> chatSessions;
 
     // --- UI Toolkit Elements ---
     private VisualElement pythonServerStatusIndicator;
@@ -46,36 +44,54 @@ public class MCPEditorWindow : EditorWindow
     private IntegerField lmstudioPortField;
     private PopupField<string> lmstudioModelDropdown;
     private Slider lmstudioTemperatureSlider;
+    private FloatField lmstudioTemperatureField;
     private Button applyLMConfigButton;
     private ScrollView chatScrollView;
     private TextField chatInput;
     private Button sendButton;
-
+    private ListView chatHistoryList;
+    private Button newChatButton;
 
     // --- Networking ---
     private static readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
     private const int MCP_PORT = 6500;
-    private float lastCheckTime = -10f; // Initial value to ensure an immediate check
-    private const float CONNECTION_CHECK_INTERVAL = 5f;
 
     [MenuItem("Window/Unity Local AI")]
     public static void ShowWindow() => GetWindow<MCPEditorWindow>("Local AI");
 
+    private void OnEnable()
+    {
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+    }
+
+    private void OnDisable()
+    {
+        EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+        // Ensure the current session is saved when the window is closed or Unity recompiles
+        if (currentSession != null)
+        {
+            ChatHistoryManager.SaveSession(currentSession);
+        }
+    }
+
+    private void OnPlayModeStateChanged(PlayModeStateChange state)
+    {
+        // Save the current session when entering play mode to prevent data loss
+        if (state == PlayModeStateChange.ExitingEditMode && currentSession != null)
+        {
+            ChatHistoryManager.SaveSession(currentSession);
+        }
+    }
+
     public void CreateGUI()
     {
-        // Each editor window contains a root VisualElement object
         VisualElement root = rootVisualElement;
-
-        // Import UXML
         var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor.uxml");
-        VisualElement labelFromUXML = visualTree.Instantiate();
-        root.Add(labelFromUXML);
-
-        // Import USS
+        visualTree.CloneTree(root);
         var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor.uss");
         root.styleSheets.Add(styleSheet);
 
-        // Get references to UI elements
+        // --- Query UI Elements ---
         pythonServerStatusIndicator = root.Q<VisualElement>("PythonServerStatusIndicator");
         pythonServerStatusLabel = root.Q<Label>("PythonServerStatusLabel");
         startServerButton = root.Q<Button>("StartServerButton");
@@ -84,81 +100,167 @@ public class MCPEditorWindow : EditorWindow
         lmstudioHostField = root.Q<TextField>("LMStudioHost");
         lmstudioPortField = root.Q<IntegerField>("LMStudioPort");
         lmstudioModelDropdown = new PopupField<string>("Model:", availableModels, 0);
-        root.Q<VisualElement>("LMStudioSection").Insert(4, lmstudioModelDropdown);
+        root.Q<VisualElement>("LMStudioSection").Insert(3, lmstudioModelDropdown);
         lmstudioTemperatureSlider = root.Q<Slider>("LMStudioTemperature");
+        lmstudioTemperatureField = root.Q<FloatField>("LMStudioTemperatureField");
         applyLMConfigButton = root.Q<Button>("ApplyLMConfigButton");
         chatScrollView = root.Q<ScrollView>("ChatScrollView");
         chatInput = root.Q<TextField>("ChatInput");
         sendButton = root.Q<Button>("SendButton");
+        chatHistoryList = root.Q<ListView>("ChatHistoryList");
+        newChatButton = root.Q<Button>("NewChatButton");
 
-        // Register event callbacks
+        // --- Register Callbacks ---
         startServerButton.clicked += StartPythonServer;
         refreshLMStatusButton.clicked += () => CheckLMStudioStatus();
         applyLMConfigButton.clicked += UpdateLMStudioConfigOnServer;
         sendButton.clicked += () => SendChatMessage(chatInput.value);
+        newChatButton.clicked += StartNewChatSession;
 
         lmstudioHostField.RegisterValueChangedCallback(evt => lmstudioHost = evt.newValue);
         lmstudioPortField.RegisterValueChangedCallback(evt => lmstudioPort = evt.newValue);
         lmstudioModelDropdown.RegisterValueChangedCallback(evt => lmstudioModel = evt.newValue);
-        lmstudioTemperatureSlider.RegisterValueChangedCallback(evt => lmstudioTemperature = evt.newValue);
 
-        // Load configuration and perform initial status check
+        lmstudioTemperatureSlider.RegisterValueChangedCallback(evt => {
+            lmstudioTemperature = Mathf.Clamp(evt.newValue, 0, 1);
+            lmstudioTemperatureField.SetValueWithoutNotify(lmstudioTemperature);
+        });
+        lmstudioTemperatureField.RegisterValueChangedCallback(evt => {
+            lmstudioTemperature = Mathf.Clamp(evt.newValue, 0, 1);
+            lmstudioTemperatureSlider.SetValueWithoutNotify(lmstudioTemperature);
+        });
+
+        // --- Load Config & Initial State ---
         LoadLMStudioConfig();
-
-        // Set initial values
         lmstudioHostField.value = lmstudioHost;
         lmstudioPortField.value = lmstudioPort;
         lmstudioTemperatureSlider.value = lmstudioTemperature;
+        lmstudioTemperatureField.value = lmstudioTemperature;
 
-        // Run a full check when the window is opened
-        InitialStatusCheck();
+        SetupChatHistory();
+
+        SetServerStatus(true, "Ready");
+        CheckLMStudioStatus();
     }
 
-    private void Update()
+    // --- Chat History ---
+    private void SetupChatHistory()
     {
-        // Periodically check if the Python server is alive
-        if (Time.realtimeSinceStartup - lastCheckTime >= CONNECTION_CHECK_INTERVAL)
+        chatSessions = ChatHistoryManager.LoadAllSessions();
+
+        chatHistoryList.makeItem = () => new Label();
+        chatHistoryList.bindItem = (element, i) =>
         {
-            lastCheckTime = Time.realtimeSinceStartup;
-            CheckPythonServerLiveness();
+            var label = element as Label;
+            var session = chatSessions[i];
+            var dateTime = DateTimeOffset.FromUnixTimeSeconds(session.createdAt).LocalDateTime;
+            label.text = $"Chat from {dateTime:g}";
+        };
+
+        chatHistoryList.itemsSource = chatSessions;
+
+        chatHistoryList.onSelectionChange += (enumerable) =>
+        {
+            var selectedSession = enumerable.FirstOrDefault() as ChatSession;
+            if (selectedSession != null)
+            {
+                LoadChatSession(selectedSession);
+            }
+        };
+
+        if (chatSessions.Any())
+        {
+            chatHistoryList.selectedIndex = 0;
+            LoadChatSession(chatSessions[0]);
+        }
+        else
+        {
+            StartNewChatSession();
         }
     }
 
-    private void RedrawUI()
+    private void StartNewChatSession()
     {
-        if (pythonServerStatusIndicator != null)
+        currentSession = new ChatSession();
+        chatSessions.Insert(0, currentSession);
+        ChatHistoryManager.SaveSession(currentSession);
+
+        chatHistoryList.itemsSource = chatSessions;
+        chatHistoryList.Rebuild();
+        chatHistoryList.selectedIndex = 0;
+
+        LoadChatSession(currentSession);
+    }
+
+    private void LoadChatSession(ChatSession session)
+    {
+        currentSession = session;
+        chatScrollView.Clear();
+        foreach (var message in currentSession.messages)
         {
-            pythonServerStatusIndicator.style.backgroundColor = pythonServerColor;
-            pythonServerStatusLabel.text = pythonServerStatus;
-            lmstudioStatusLabel.text = lmstudioStatusMessage;
+            AddMessageToView(message);
         }
+    }
+
+    private void AddMessageToView(ChatMessage message, bool isProcessing = false)
+    {
+        var messageLabel = new Label($"<b>{message.sender}:</b>\n{message.content}")
+        {
+            style = { whiteSpace = WhiteSpace.Normal, paddingBottom = 5, paddingLeft = 5, paddingRight = 5, paddingTop = 5, color = Color.white }
+        };
+        messageLabel.AddToClassList(message.sender == "You" ? "chat-message-user" : "chat-message-assistant");
+
+        if (isProcessing) messageLabel.name = "processing-message";
+
+        chatScrollView.Add(messageLabel);
+        chatScrollView.ScrollTo(chatScrollView.contentContainer[chatScrollView.contentContainer.childCount - 1]);
     }
 
     // --- Server Interaction Methods ---
+    private void SetServerStatus(bool isConnected, string customMessage = null)
+    {
+        if (pythonServerStatusIndicator == null) return;
+        if (isConnected)
+        {
+            pythonServerColor = Color.green;
+            pythonServerStatus = customMessage ?? "Connected";
+        }
+        else
+        {
+            pythonServerColor = Color.red;
+            pythonServerStatus = customMessage ?? "Not Connected";
+            lmstudioStatusMessage = "N/A (Python server down)";
+        }
+        pythonServerStatusIndicator.style.backgroundColor = pythonServerColor;
+        pythonServerStatusLabel.text = pythonServerStatus;
+        if (!isConnected || customMessage != null) lmstudioStatusLabel.text = lmstudioStatusMessage;
+    }
 
     private async void SendChatMessage(string message)
     {
         if (string.IsNullOrWhiteSpace(message)) return;
 
-        AddMessageToChat("You", message);
+        var userMessage = new ChatMessage("You", message);
+        currentSession.messages.Add(userMessage);
+        AddMessageToView(userMessage);
         chatInput.value = "";
 
-        AddMessageToChat("Assistant", "<i>Processing...</i>", true);
+        var assistantMessage = new ChatMessage("Assistant", "<i>Processing...</i>");
+        currentSession.messages.Add(assistantMessage);
+        AddMessageToView(assistantMessage, true);
+
+        ChatHistoryManager.SaveSession(currentSession);
 
         try
         {
             var requestPayload = new { prompt = message };
             string jsonPayload = JsonConvert.SerializeObject(requestPayload);
             string url = $"http://localhost:{MCP_PORT}/api/process";
-
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
             HttpResponseMessage response = await httpClient.PostAsync(url, content);
+            SetServerStatus(response.IsSuccessStatusCode);
             string responseJson = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception($"Server returned error {response.StatusCode}: {responseJson}");
-            }
+            if (!response.IsSuccessStatusCode) throw new Exception($"Server returned error {response.StatusCode}: {responseJson}");
 
             var result = JObject.Parse(responseJson);
             string llmResponse = result["llm_response"]?.ToString() ?? "No text response.";
@@ -168,7 +270,6 @@ public class MCPEditorWindow : EditorWindow
 
             if (commands != null && commands.Count > 0)
             {
-                // *** MODIFIED LINE ***
                 EditorApplication.delayCall += () => UnityMCPBridge.ExecuteCommands(commands.ToString());
             }
         }
@@ -176,145 +277,69 @@ public class MCPEditorWindow : EditorWindow
         {
             Debug.LogError($"[MCP] Error sending chat message: {ex.Message}");
             UpdateLastAssistantMessage($"<b>Error:</b> {ex.Message}");
+            SetServerStatus(false, "Error");
         }
-    }
-
-    private void AddMessageToChat(string sender, string message, bool isProcessing = false)
-    {
-        var chatMessage = new ChatMessage(sender, message);
-        chatHistory.Add(chatMessage);
-
-        var messageLabel = new Label($"<b>{sender}:</b>\n{message}")
-        {
-            style =
-            {
-                whiteSpace = WhiteSpace.Normal,
-                paddingBottom = 5,
-                paddingLeft = 5,
-                paddingRight = 5,
-                paddingTop = 5,
-                color = Color.white
-            }
-        };
-        messageLabel.AddToClassList(sender == "You" ? "chat-message-user" : "chat-message-assistant");
-
-        if (isProcessing)
-        {
-            messageLabel.name = "processing-message";
-        }
-
-        chatScrollView.Add(messageLabel);
-        chatScrollView.ScrollTo(chatScrollView.contentContainer[chatScrollView.contentContainer.childCount - 1]);
     }
 
     private void UpdateLastAssistantMessage(string newMessage)
     {
+        if (currentSession.messages.Any())
+        {
+            currentSession.messages[currentSession.messages.Count - 1] = new ChatMessage("Assistant", newMessage);
+            ChatHistoryManager.SaveSession(currentSession);
+        }
+
         var processingLabel = chatScrollView.Q<Label>("processing-message");
         if (processingLabel != null)
         {
             processingLabel.text = $"<b>Assistant:</b>\n{newMessage}";
-            processingLabel.name = ""; // remove the name so we don't find it again
+            processingLabel.name = "";
         }
-    }
-
-
-    private async void InitialStatusCheck()
-    {
-        // Kicks off the check. The rest is handled asynchronously and via the Update loop.
-        await CheckPythonServerLiveness();
-    }
-
-    private async Task CheckPythonServerLiveness()
-    {
-        try
-        {
-            string healthUrl = $"http://localhost:{MCP_PORT}/health";
-            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2)))
-            {
-                HttpResponseMessage healthResponse = await httpClient.GetAsync(healthUrl, cts.Token);
-                if (healthResponse.IsSuccessStatusCode)
-                {
-                    bool wasConnected = pythonServerStatus == "Connected";
-                    pythonServerStatus = "Connected";
-                    pythonServerColor = Color.green;
-
-                    if (!wasConnected)
-                    {
-                        // This is the first time we've connected in a while.
-                        // Let's refresh everything.
-                        await CheckLMStudioStatus();
-                        await FetchAvailableModels();
-                    }
-                }
-                else
-                {
-                    throw new Exception("Health check failed.");
-                }
-            }
-        }
-        catch
-        {
-            if (pythonServerStatus != "Not Connected")
-            {
-                pythonServerStatus = "Not Connected";
-                lmstudioStatusMessage = "N/A (Python server down)";
-            }
-            pythonServerColor = Color.red;
-        }
-        RedrawUI();
     }
 
     private async Task CheckLMStudioStatus()
     {
         lmstudioStatusMessage = "Checking...";
-        RedrawUI();
+        SetServerStatus(true, "Checking LM Studio...");
         try
         {
             string statusUrl = $"http://localhost:{MCP_PORT}/api/status";
             HttpResponseMessage statusResponse = await httpClient.GetAsync(statusUrl);
+            SetServerStatus(statusResponse.IsSuccessStatusCode);
             string statusJson = await statusResponse.Content.ReadAsStringAsync();
-
             if (!statusResponse.IsSuccessStatusCode) throw new Exception(statusJson);
-
             var status = JObject.Parse(statusJson);
-            if (status["status"]?.ToString() == "connected")
-            {
-                lmstudioStatusMessage = $"Connected to model '{status["model"]}'";
-            }
-            else
-            {
-                lmstudioStatusMessage = $"<color=orange>LM Studio Disconnected.</color> Reason: {status["message"] ?? "Unknown"}";
-            }
+            if (status["status"]?.ToString() == "connected") lmstudioStatusMessage = $"Connected to model '{status["model"]}'";
+            else lmstudioStatusMessage = $"<color=orange>LM Studio Disconnected.</color> Reason: {status["message"] ?? "Unknown"}";
         }
         catch (Exception ex)
         {
             lmstudioStatusMessage = $"<color=red>Error checking status.</color>";
             Debug.LogError($"[MCP] Failed to check LM Studio status: {ex.Message}");
+            SetServerStatus(false, "Error");
         }
-        RedrawUI();
+        lmstudioStatusLabel.text = lmstudioStatusMessage;
     }
 
     private async Task FetchAvailableModels()
     {
         if (fetchingModels) return;
         fetchingModels = true;
-
+        SetServerStatus(true, "Fetching Models...");
         try
         {
             string url = $"http://localhost:{MCP_PORT}/api/models";
             using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
             {
                 HttpResponseMessage response = await httpClient.GetAsync(url, cts.Token);
+                SetServerStatus(response.IsSuccessStatusCode);
                 response.EnsureSuccessStatusCode();
-
                 string json = await response.Content.ReadAsStringAsync();
                 var models = JsonConvert.DeserializeObject<List<string>>(json);
-
                 if (models != null && models.Count > 0)
                 {
                     availableModels = models;
                     selectedModelIndex = availableModels.IndexOf(lmstudioModel);
-                    // If the saved model isn't in the list, default to the first one.
                     if (selectedModelIndex < 0)
                     {
                         selectedModelIndex = 0;
@@ -328,26 +353,29 @@ public class MCPEditorWindow : EditorWindow
         catch (Exception ex)
         {
             Debug.LogError($"[MCP] Failed to fetch available models: {ex.Message}");
+            SetServerStatus(false, "Error Fetching Models");
             availableModels.Clear();
             selectedModelIndex = -1;
-            lmstudioModelDropdown.choices = availableModels;
-            lmstudioModelDropdown.index = selectedModelIndex;
+            if (lmstudioModelDropdown != null)
+            {
+                lmstudioModelDropdown.choices = availableModels;
+                lmstudioModelDropdown.index = selectedModelIndex;
+            }
         }
-        finally
-        {
-            fetchingModels = false;
-        }
+        finally { fetchingModels = false; }
     }
 
     private async void UpdateLMStudioConfigOnServer()
     {
+        SetServerStatus(true, "Updating Config...");
         try
         {
             var configPayload = new { host = lmstudioHost, port = lmstudioPort, model = lmstudioModel, temperature = lmstudioTemperature };
             string jsonPayload = JsonConvert.SerializeObject(configPayload);
-string url = $"http://localhost:{MCP_PORT}/api/configure";
+            string url = $"http://localhost:{MCP_PORT}/api/configure";
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
             HttpResponseMessage response = await httpClient.PostAsync(url, content);
+            SetServerStatus(response.IsSuccessStatusCode);
             if (response.IsSuccessStatusCode)
             {
                 Debug.Log("[MCP] Configuration successfully updated on the server.");
@@ -363,6 +391,7 @@ string url = $"http://localhost:{MCP_PORT}/api/configure";
         catch (Exception ex)
         {
             Debug.LogError($"[MCP] Error updating configuration: {ex.Message}");
+            SetServerStatus(false, "Config Error");
         }
     }
 
@@ -409,65 +438,43 @@ string url = $"http://localhost:{MCP_PORT}/api/configure";
     private void StartPythonServer()
     {
         string pythonScriptPath = Path.Combine(GetProjectRootPath(), "Assets", "Python", "Python", "lmstudio_mcp_server.py");
-        string pythonExecutable = "python3"; // Default to python3 for Mac/Linux
-
+        string pythonExecutable = "python3";
         if (!File.Exists(pythonScriptPath))
         {
             Debug.LogError($"[MCP] Python script not found at: {pythonScriptPath}");
             return;
         }
-
         try
         {
             var process = new System.Diagnostics.Process();
-
             if (Application.platform == RuntimePlatform.WindowsEditor)
             {
-                pythonExecutable = "python"; // Windows usually uses 'python'
+                pythonExecutable = "python";
                 process.StartInfo.FileName = "cmd.exe";
-                // /c to carry out the command and then terminate
-                // start to run in a new window, /D sets the working directory
                 process.StartInfo.Arguments = $"/c start \"Unity MCP Server\" /D \"{Path.GetDirectoryName(pythonScriptPath)}\" {pythonExecutable} \"{Path.GetFileName(pythonScriptPath)}\"";
                 process.StartInfo.UseShellExecute = false;
                 process.StartInfo.CreateNoWindow = true;
             }
             else if (Application.platform == RuntimePlatform.OSXEditor)
             {
-                // Using osascript to tell the Terminal app to run a command
                 string script = $"tell application \"Terminal\" to do script \"cd \\\"{Path.GetDirectoryName(pythonScriptPath)}\\\" && {pythonExecutable} \\\"{Path.GetFileName(pythonScriptPath)}\\\"\"";
                 process.StartInfo.FileName = "osascript";
                 process.StartInfo.Arguments = $"-e '{script}'";
                 process.StartInfo.UseShellExecute = true;
             }
-            else // Assuming Linux
+            else
             {
-                 // Try to use gnome-terminal, which is common. User might need to adapt for other terminals.
                 process.StartInfo.FileName = "gnome-terminal";
                 process.StartInfo.Arguments = $"--working-directory=\"{Path.GetDirectoryName(pythonScriptPath)}\" -- {pythonExecutable} \"{Path.GetFileName(pythonScriptPath)}\"";
                 process.StartInfo.UseShellExecute = true;
             }
-
             process.Start();
             Debug.Log("[MCP] Attempting to start Python server in a new terminal window.");
         }
         catch (Exception ex)
         {
             Debug.LogError($"[MCP] Failed to start Python server: {ex.Message}");
-            EditorUtility.DisplayDialog(
-                "Failed to Start Server",
-                "Could not start the Python server. Please ensure you have Python (and the correct terminal for your OS) installed and in your system's PATH. " +
-                "You may need to start it manually by running:\n\n" +
-                $"python3 {pythonScriptPath}\n\n" +
-                $"Error: {ex.Message}",
-                "OK"
-            );
+            EditorUtility.DisplayDialog("Failed to Start Server", "Could not start the Python server...", "OK");
         }
-    }
-
-    private readonly struct ChatMessage
-    {
-        public readonly string sender;
-        public readonly string content;
-        public ChatMessage(string sender, string content) { this.sender = sender; this.content = content; }
     }
 }
