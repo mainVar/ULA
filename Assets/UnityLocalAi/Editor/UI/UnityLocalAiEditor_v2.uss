@@ -1,0 +1,175 @@
+/* --- Main Layout --- */
+.main-window {
+    flex-grow: 1;
+    flex-direction: column;
+    background-color: rgb(56, 56, 56);
+}
+
+.header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: rgb(40, 40, 40);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(30, 30, 30);
+    height: 45px;
+}
+
+.header-title {
+    font-size: 16px;
+    -unity-font-style: bold;
+    color: rgb(220, 220, 220);
+}
+
+.main-content {
+    flex-grow: 1;
+    flex-direction: row;
+}
+
+/* --- Left Panel --- */
+.left-panel {
+    width: 280px;
+    min-width: 250px;
+    max-width: 400px;
+    background-color: rgb(45, 45, 45);
+    border-right-width: 1px;
+    border-right-color: rgb(30, 30, 30);
+    padding: 10px;
+}
+
+.config-section {
+    margin-bottom: 15px;
+    padding: 12px;
+    background-color: rgb(56, 56, 56);
+    border-radius: 5px;
+}
+
+.section-header {
+    font-size: 14px;
+    -unity-font-style: bold;
+    margin-bottom: 8px;
+    color: rgb(200, 200, 200);
+}
+
+.new-chat-button {
+    margin-bottom: 8px;
+}
+
+.chat-history-list {
+    flex-grow: 1;
+    min-height: 100px;
+}
+
+.chat-history-list .unity-list-view__item {
+    padding: 8px 6px;
+    color: rgb(210, 210, 210);
+}
+
+.chat-history-list .unity-list-view__item:hover {
+    background-color: rgba(86, 156, 214, 0.3); /* A subtle blue hover */
+}
+
+.chat-history-list .unity-list-view__item--selected {
+    background-color: rgb(86, 156, 214); /* A nice blue for selection */
+    color: white;
+}
+
+.status-indicator-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    margin-right: 8px;
+}
+
+.status-label {
+    color: rgb(180, 180, 180);
+}
+
+.slider-with-field {
+    flex-direction: row;
+    align-items: center;
+}
+
+.slider-with-field .unity-slider {
+    flex-grow: 1;
+}
+
+.slider-with-field .unity-float-field {
+    width: 50px;
+    margin-left: 10px;
+}
+
+/* --- Right Panel (Chat) --- */
+.right-panel {
+    flex-grow: 1;
+    flex-direction: column;
+    background-color: rgb(50, 50, 50);
+}
+
+.chat-scroll-view {
+    flex-grow: 1;
+    padding: 10px;
+}
+
+.input-container {
+    flex-direction: row;
+    padding: 10px;
+    background-color: rgb(40, 40, 40);
+    border-top-width: 1px;
+    border-top-color: rgb(30, 30, 30);
+    min-height: 60px;
+    align-items: flex-end;
+}
+
+.chat-input {
+    flex-grow: 1;
+    margin-right: 10px;
+    font-size: 14px;
+}
+
+.chat-input .unity-text-input {
+    padding: 8px;
+    background-color: rgb(30, 30, 30);
+    border-color: rgb(60, 60, 60);
+    color: rgb(220, 220, 220);
+}
+
+.send-button {
+    width: 36px;
+    height: 36px;
+    background-color: rgb(86, 156, 214);
+    border-radius: 5px;
+}
+
+.send-button:hover {
+    background-color: rgb(100, 170, 220);
+}
+
+/* --- Chat Messages --- */
+.chat-message-user {
+    background-color: rgb(86, 156, 214);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    margin: 5px 0;
+    align-self: flex-end;
+    max-width: 80%;
+    white-space: normal;
+}
+
+.chat-message-assistant {
+    background-color: rgb(68, 70, 84);
+    color: rgb(220, 220, 220);
+    padding: 10px;
+    border-radius: 8px;
+    margin: 5px 0;
+    align-self: flex-start;
+    max-width: 80%;
+    white-space: normal;
+}

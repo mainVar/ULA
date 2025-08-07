@@ -1,0 +1,70 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+
+    <!-- Import Styles -->
+    <Style src="project://database/Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor_v2.uss?fileID=7433441132597879392&amp;guid=...&amp;type=3" />
+
+    <!-- Main Window Container -->
+    <ui:VisualElement name="MainWindow" class="main-window">
+
+        <!-- Header -->
+        <ui:VisualElement name="Header" class="header">
+            <ui:Label text="Unity Local AI" class="header-title" />
+            <ui:VisualElement name="HeaderButtons">
+                <ui:Button name="SettingsButton" class="header-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Main Content -->
+        <ui:VisualElement name="MainContent" class="main-content">
+
+            <!-- Left Panel -->
+            <ui:VisualElement name="LeftPanel" class="left-panel">
+
+                <!-- Chat History Section -->
+                <ui:VisualElement name="ChatHistorySection" class="config-section">
+                    <ui:Label text="Chat Sessions" class="section-header" />
+                    <ui:Button name="NewChatButton" text="New Chat" class="new-chat-button" />
+                    <ui:ListView name="ChatHistoryList" class="chat-history-list" />
+                </ui:VisualElement>
+
+                <!-- Server Status Section -->
+                <ui:VisualElement name="ServerStatusSection" class="config-section">
+                    <ui:Label text="Server Status" class="section-header" />
+                    <ui:VisualElement class="status-indicator-row">
+                        <ui:VisualElement name="PythonServerStatusIndicator" class="status-indicator" />
+                        <ui:Label name="PythonServerStatusLabel" text="-" class="status-label" />
+                    </ui:VisualElement>
+                     <ui:Button name="StartServerButton" text="Start Server" />
+                </ui:VisualElement>
+
+                <!-- LMStudio Config Section -->
+                <ui:VisualElement name="LMStudioConfigSection" class="config-section">
+                    <ui:Label text="LM Studio" class="section-header" />
+                    <ui:Label name="LMStudioStatusLabel" text="-" class="status-label" />
+                    <ui:Button name="RefreshLMStatusButton" class="icon-button" />
+                    <ui:TextField name="LMStudioHost" label="Host" />
+                    <ui:IntegerField name="LMStudioPort" label="Port" />
+                    <ui:PopupField name="LMStudioModel" label="Model" />
+                    <ui:VisualElement class="slider-with-field">
+                        <ui:Slider name="LMStudioTemperature" label="Temp" low-value="0" high-value="1" />
+                        <ui:FloatField name="LMStudioTemperatureField" />
+                    </ui:VisualElement>
+                    <ui:Button name="ApplyLMConfigButton" text="Apply &amp; Save" />
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+            <!-- Right Panel (Chat) -->
+            <ui:VisualElement name="RightPanel" class="right-panel">
+                <ui:ScrollView name="ChatScrollView" class="chat-scroll-view">
+                    <!-- Messages will be added here -->
+                </ui:ScrollView>
+                <ui:VisualElement name="InputContainer" class="input-container">
+                    <ui:TextField name="ChatInput" multiline="true" class="chat-input" />
+                    <ui:Button name="SendButton" class="send-button" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
