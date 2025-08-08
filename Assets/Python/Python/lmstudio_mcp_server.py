@@ -13,6 +13,7 @@ from typing import Dict, Any, List
 import uvicorn
 import json
 import re
+import subprocess
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -289,6 +290,36 @@ Here are the available functions and their arguments:
          }
        }
      ]
+
+--------------------------------------------------------------------------------
+-- SYSTEM & FILE OPERATIONS
+--------------------------------------------------------------------------------
+
+9. execute_cli
+   - Description: Executes a command-line interface (CLI) command on the local machine. This is useful for file system operations, running scripts, or interacting with other command-line tools. For complex file manipulation or queries, consider using the 'gemini-cli' tool if it is available.
+   - args:
+     - command (string, required): The full command to execute.
+     - working_directory (string, optional): The directory to run the command in. Defaults to the project root.
+
+   - Example (List files in a directory):
+     [
+       {
+         "function": "execute_cli",
+         "args": {
+           "command": "ls -l Assets/Textures/"
+         }
+       }
+     ]
+
+   - Example (Use gemini-cli to organize files):
+     [
+       {
+         "function": "execute_cli",
+         "args": {
+           "command": "gemini 'Organize all my texture files into folders based on their dominant color.'"
+         }
+       }
+     ]
 """,
 }
 
@@ -405,7 +436,10 @@ async def health_check():
 
 @app.post("/api/process")
 async def process_request(request: Dict[str, Any]):
-    """Processes a prompt and returns the LLM response and extracted commands."""
+    """
+    Processes a prompt, handles regular commands, and intercepts 'execute_cli'
+    commands to run them locally and summarize the output.
+    """
     prompt = request.get("prompt") or request.get("content")
     if not prompt:
         raise HTTPException(status_code=400, detail="Missing 'prompt' or 'content' in request.")
@@ -413,9 +447,67 @@ async def process_request(request: Dict[str, Any]):
     if _lmstudio_connection is None:
         raise HTTPException(status_code=503, detail="Not connected to LM Studio.")
 
+    # Initial call to the LLM
     llm_resp = await _lmstudio_connection.generate(prompt, config["system_prompt"])
     commands = extract_json_from_response(llm_resp)
 
+    # --- CLI Command Handling ---
+    # Check if the response contains a CLI command
+    cli_command_to_run = None
+    for command in commands:
+        if command.get("function") == "execute_cli":
+            cli_command_to_run = command
+            break
+
+    if cli_command_to_run:
+        logger.info("Intercepted execute_cli command: %s", cli_command_to_run)
+
+        cli_command_str = cli_command_to_run.get("args", {}).get("command")
+        if not cli_command_str:
+            return {"status": "error", "llm_response": "LLM generated an execute_cli command with no command to run.", "commands": []}
+
+        try:
+            # Execute the command
+            result = subprocess.run(
+                cli_command_str,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=120  # 2-minute timeout for safety
+            )
+
+            stdout = result.stdout.strip()
+            stderr = result.stderr.strip()
+
+            logger.info("CLI command stdout: %s", stdout)
+            if stderr:
+                logger.error("CLI command stderr: %s", stderr)
+
+            # Create a new prompt to summarize the result
+            output_summary = f"STDOUT:\n{stdout}\n\nSTDERR:\n{stderr}"
+            summarization_prompt = (
+                f"I just ran a command-line tool for the user based on their request. "
+                f"The command was: '{cli_command_str}'.\n"
+                f"The tool produced the following output:\n\n---\n{output_summary}\n---\n\n"
+                f"Please provide a concise, user-friendly summary of what happened. "
+                f"Describe the outcome, and if there was an error, explain it simply. "
+                f"Do not output JSON or any other code. Just provide a natural language response."
+            )
+
+            # Second call to the LLM for summarization
+            final_llm_response = await _lmstudio_connection.generate(summarization_prompt)
+
+            # Return the summarized response to Unity, with no commands to execute
+            return {"status": "success", "llm_response": final_llm_response, "commands": []}
+
+        except subprocess.TimeoutExpired:
+            logger.error("CLI command timed out: %s", cli_command_str)
+            return {"status": "error", "llm_response": f"The command '{cli_command_str}' timed out and was cancelled.", "commands": []}
+        except Exception as e:
+            logger.error("Failed to execute or summarize CLI command: %s", e, exc_info=True)
+            return {"status": "error", "llm_response": f"An unexpected error occurred while running the command: {e}", "commands": []}
+
+    # If no CLI command, return the original response
     return {"status": "success", "llm_response": llm_resp, "commands": commands}
 
 
