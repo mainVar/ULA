@@ -29,7 +29,7 @@ config: Dict[str, Any] = {
     "lmstudio_host": "localhost",
     "lmstudio_port": 1234,
     "model": "qwen/qwen3-14b",
-    "temperature": 0.2,
+    "temperature": 0.7,
     "system_prompt": """You are a helpful AI assistant that controls the Unity Editor.
 Your ONLY output must be a JSON array of command objects. Do NOT add any conversational text or explanations.
 
@@ -379,7 +379,7 @@ class LMStudioConnection:
             "model": self.model,
             "messages": messages,
             "temperature": self.temperature,
-            "max_tokens": 4096,
+            "max_tokens": 8096,
         }
 
         async with aiohttp.ClientSession() as s:

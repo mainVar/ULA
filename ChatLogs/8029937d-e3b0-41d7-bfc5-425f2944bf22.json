@@ -1,0 +1,54 @@
+{
+  "sessionId": "8029937d-e3b0-41d7-bfc5-425f2944bf22",
+  "messages": [
+    {
+      "sender": "You",
+      "content": "напиши скріпт контролеер гравця що буде працювати по wasd"
+    },
+    {
+      "sender": "Assistant",
+      "content": "[\n  {\n    \"function\": \"manage_script\",\n    \"args\": {\n      \"action\": \"create\",\n      \"name\": \"PlayerController\",\n      \"path\": \"Assets/Scripts/\",\n      \"contents\": \"using UnityEngine;\\n\\npublic class PlayerController : MonoBehaviour {\\n    public float speed = 5.0f;\\n    void Update() {\\n        float horizontal = Input.GetAxis(\\\"Horizontal\\\"); // A/D or Left/Right\\n        float vertical = Input.GetAxis(\\\"Vertical\\\");   // W/S or Up/Down\\n        Vector3 move = new Vector3(horizontal, 0, vertical) * speed * Time.deltaTime;\\n        transform.Translate(move);\\n    }\\n}\"\n    }\n  }\n]"
+    },
+    {
+      "sender": "You",
+      "content": "створи 5 сфер різного розміру та кольору"
+    },
+    {
+      "sender": "Assistant",
+      "content": "[\n  {\n    \"function\": \"manage_asset\",\n    \"args\": {\n      \"action\": \"create\",\n      \"asset_type\": \"Material\",\n      \"path\": \"Assets/Materials/SphereRed.mat\",\n      \"properties\": {\n        \"color\": [1, 0, 0, 1],\n        \"shader\": \"Standard\"\n      }\n    }\n  },\n  {\n    \"function\": \"manage_asset\",\n    \"args\": {\n      \"action\": \"create\",\n      \"asset_type\": \"Material\",\n      \"path\": \"Assets/Materials/SphereGreen.mat\",\n      \"properties\": {\n        \"color\": [0, 1, 0, 1],\n        \"shader\": \"Standard\"\n      }\n    }\n  },\n  {\n    \"function\": \"manage_asset\",\n    \"args\": {\n      \"action\": \"create\",\n      \"asset_type\": \"Material\",\n      \"path\": \"Assets/Materials/SphereBlue.mat\",\n      \"properties\": {\n        \"color\": [0, 0, 1, 1],\n        \"shader\": \"Standard\"\n      }\n    }\n  },\n  {\n    \"function\": \"manage_asset\",\n    \"args\": {\n      \"action\": \"create\",\n      \"asset_type\": \"Material\",\n      \"path\": \"Assets/Materials/SphereYellow.mat\",\n      \"properties\": {\n        \"color\": [1, 1, 0, 1],\n        \"shader\": \"Standard\"\n      }\n    }\n  },\n  {\n    \"function\": \"manage_asset\",\n    \"args\": {\n      \"action\": \"create\",\n      \"asset_type\": \"Material\",\n      \"path\": \"Assets/Materials/SphereMagenta.mat\",\n      \"properties\": {\n        \"color\": [1, 0, 1, 1],\n        \"shader\": \"Standard\"\n      }\n    }\n  },\n  {\n    \"function\": \"manage_gameobject\",\n    \"args\": {\n      \"action\": \"create\",\n      \"name\": \"SphereRed\",\n      \"primitive_type\": \"Sphere\",\n      \"position\": [-4, 0.5, 0],\n      \"scale\": [1, 1, 1],\n      \"components_to_add\": [\"MeshRenderer\"],\n      \"component_properties\": {\n        \"MeshRenderer\": {\n          \"sharedMaterial\": \"Assets/Materials/SphereRed.mat\"\n        }\n      }\n    }\n  },\n  {\n    \"function\": \"manage_gameobject\",\n    \"args\": {\n      \"action\": \"create\",\n      \"name\": \"SphereGreen\",\n      \"primitive_type\": \"Sphere\",\n      \"position\": [-2, 0.5, 0],\n      \"scale\": [1.5, 1.5, 1.5],\n      \"components_to_add\": [\"MeshRenderer\"],\n      \"component_properties\": {\n        \"MeshRenderer\": {\n          \"sharedMaterial\": \"Assets/Materials/SphereGreen.mat\"\n        }\n      }\n    }\n  },\n  {\n    \"function\": \"manage_gameobject\",\n    \"args\": {\n      \"action\": \"create\",\n      \"name\": \"SphereBlue\",\n      \"primitive_type\": \"Sphere\",\n      \"position\": [0, 0.5, 0],\n      \"scale\": [2, 2, 2],\n      \"components_to_add\": [\"MeshRenderer\"],\n      \"component_properties\": {\n        \"MeshRenderer\": {\n          \"sharedMaterial\": \"Assets/Materials/SphereBlue.mat\"\n        }\n      }\n    }\n  },\n  {\n    \"function\": \"manage_gameobject\",\n    \"args\": {\n      \"action\": \"create\",\n      \"name\": \"SphereYellow\",\n      \"primitive_type\": \"Sphere\",\n      \"position\": [2, 0.5, 0],\n      \"scale\": [1.8, 1.8, 1.8],\n      \"components_to_add\": [\"MeshRenderer\"],\n      \"component_properties\": {\n        \"MeshRenderer\": {\n          \"sharedMaterial\": \"Assets/Materials/SphereYellow.mat\"\n        }\n      }\n    }\n  },\n  {\n    \"function\": \"manage_gameobject\",\n    \"args\": {\n      \"action\": \"create\",\n      \"name\": \"SphereMagenta\",\n      \"primitive_type\": \"Sphere\",\n      \"position\": [4, 0.5, 0],\n      \"scale\": [1.2, 1.2, 1.2],\n      \"components_to_add\": [\"MeshRenderer\"],\n      \"component_properties\": {\n        \"MeshRenderer\": {\n          \"sharedMaterial\": \"Assets/Materials/SphereMagenta.mat\"\n        }\n      }\n    }\n  }\n]"
+    },
+    {
+      "sender": "You",
+      "content": "Напиши мені код який буде переміщати каперу та по кліку втріляти. як фпс контроллер персонажу\n"
+    },
+    {
+      "sender": "Assistant",
+      "content": "[\n  {\n    \"function\": \"manage_script\",\n    \"args\": {\n      \"action\": \"create\",\n      \"name\": \"FPSPlayerController\",\n      \"path\": \"Assets/Scripts/Controllers/\",\n      \"namespace\": \"MyGame.Controllers\",\n      \"script_type\": \"MonoBehaviour\",\n      \"contents\": \"using UnityEngine;\\n\\nnamespace MyGame.Controllers\\n{\\n    public class FPSPlayerController : MonoBehaviour\\n    {\\n        [Header(\\\"Movement Settings\\\")]\\n        public float moveSpeed = 5f;\\n        public float lookSensitivity = 2f;\\n        public Transform cameraTransform;\\n\\n        [Header(\\\"Shooting Settings\\\")]\\n        public GameObject projectilePrefab;\\n        public Transform shootOrigin;\\n        public float projectileSpeed = 20f;\\n        public float fireRate = 0.25f;\\n\\n        private float nextFireTime = 0f;\\n        private CharacterController controller;\\n        private Vector2 lookRotation;\\n\\n        void Awake()\\n        {\\n            controller = GetComponent<CharacterController>();\\n            if (cameraTransform == null)\\n                cameraTransform = Camera.main.transform;\\n        }\\n\\n        void Update()\\n        {\\n            HandleMovement();\\n            HandleLook();\\n            HandleShooting();\\n        }\\n\\n        void HandleMovement()\\n        {\\n            float h = Input.GetAxis(\\\"Horizontal\\\");\\n            float v = Input.GetAxis(\\\"Vertical\\\");\\n            Vector3 moveDir = new Vector3(h, 0, v).normalized;\\n            if (moveDir.magnitude > 0)\\n                moveDir = transform.TransformDirection(moveDir);\\n\\n            controller.SimpleMove(moveDir * moveSpeed);\\n        }\\n\\n        void HandleLook()\\n        {\\n            float mouseX = Input.GetAxis(\\\"Mouse X\\\") * lookSensitivity;\\n            float mouseY = Input.GetAxis(\\\"Mouse Y\\\") * lookSensitivity;\\n\\n            lookRotation.x += mouseX;\\n            lookRotation.y -= mouseY;\\n            lookRotation.y = Mathf.Clamp(lookRotation.y, -90f, 90f);\\n\\n            transform.rotation = Quaternion.Euler(0, lookRotation.x, 0);\\n            cameraTransform.localEulerAngles = new Vector3(lookRotation.y, 0, 0);\\n        }\\n\\n        void HandleShooting()\\n        {\\n            if (Input.GetMouseButton(0) && Time.time >= nextFireTime)\\n            {\\n                Shoot();\\n                nextFireTime = Time.time + fireRate;\\n            }\\n        }\\n\\n        void Shoot()\\n        {\\n            if (projectilePrefab == null || shootOrigin == null) return;\\n\\n            GameObject proj = Instantiate(projectilePrefab, shootOrigin.position, shootOrigin.rotation);\\n            Rigidbody rb = proj.GetComponent<Rigidbody>();\\n            if (rb != null)\\n                rb.velocity = shootOrigin.forward * projectileSpeed;\\n        }\\n    }\\n}\"\n    }\n  }\n]"
+    },
+    {
+      "sender": "You",
+      "content": "запусти плеймод\n"
+    },
+    {
+      "sender": "Assistant",
+      "content": "<|channel|>final <|constrain|>JSON<|message|>[\n  {\n    \"function\": \"manage_editor\",\n    \"args\": {\n      \"action\": \"play\"\n    }\n  }\n]"
+    },
+    {
+      "sender": "You",
+      "content": "можеш виправити проблему з плеєром деталі в логах консолі\n"
+    },
+    {
+      "sender": "Assistant",
+      "content": "[\n  {\n    \"function\": \"read_console\",\n    \"args\": {\n      \"action\": \"get\",\n      \"types\": [\"error\", \"warning\"]\n    }\n  },\n  {\n    \"function\": \"manage_editor\",\n    \"args\": {\n      \"action\": \"stop\"\n    }\n  }\n]"
+    },
+    {
+      "sender": "You",
+      "content": "візьми данні помилки гравця з консолі та виправ\n"
+    },
+    {
+      "sender": "Assistant",
+      "content": "<|channel|>final <|constrain|>JSON array<|message|>[\n  {\n    \"function\": \"read_console\",\n    \"args\": {\n      \"action\": \"get\",\n      \"types\": [\"error\"]\n    }\n  },\n  {\n    \"function\": \"manage_script\",\n    \"args\": {\n      \"action\": \"update\",\n      \"name\": \"PlayerController\",\n      \"contents\": \"using UnityEngine;\\n\\npublic class PlayerController : MonoBehaviour {\\n    public float speed = 5.0f;\\n    private Rigidbody rb;\\n\\n    void Awake() {\\n        rb = GetComponent<Rigidbody>();\\n        if (rb == null) {\\n            Debug.LogError(\\\"PlayerController requires a Rigidbody component.\\\");\\n        }\\n    }\\n\\n    void Update() {\\n        float horizontal = Input.GetAxis(\\\"Horizontal\\\");\\n        Vector3 movement = new Vector3(horizontal, 0f, 0f);\\n        rb.MovePosition(transform.position + movement * speed * Time.deltaTime);\\n    }\\n}\"\n    }\n  }\n]"
+    }
+  ],
+  "createdAt": 1755874003
+}
