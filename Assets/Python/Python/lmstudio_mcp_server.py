@@ -368,7 +368,7 @@ class LMStudioConnection:
         except Exception:
             return False
 
-    async def generate(self, prompt: str, system_prompt: str | None = None) -> str:
+    async def generate(self, prompt: str, system_prompt: str | None = None) -> Dict[str, Any]:
         """Generates a completion using the LM Studio chat API."""
         url = f"{self.base_url}/v1/chat/completions"
         messages = (
@@ -386,7 +386,7 @@ class LMStudioConnection:
             async with s.post(url, json=payload, timeout=120) as r:
                 r.raise_for_status()
                 data = await r.json()
-                return data["choices"][0]["message"]["content"]
+                return data["choices"][0]["message"]
 
 # --- FastAPI Application ---
 app = FastAPI()
@@ -448,8 +448,10 @@ async def process_request(request: Dict[str, Any]):
         raise HTTPException(status_code=503, detail="Not connected to LM Studio.")
 
     # Initial call to the LLM
-    llm_resp = await _lmstudio_connection.generate(prompt, config["system_prompt"])
-    commands = extract_json_from_response(llm_resp)
+    llm_message = await _lmstudio_connection.generate(prompt, config["system_prompt"])
+    llm_content = llm_message.get("content", "")
+    llm_reasoning = llm_message.get("reasoning")
+    commands = extract_json_from_response(llm_content)
 
     # --- CLI Command Handling ---
     # Check if the response contains a CLI command
@@ -495,10 +497,13 @@ async def process_request(request: Dict[str, Any]):
             )
 
             # Second call to the LLM for summarization
-            final_llm_response = await _lmstudio_connection.generate(summarization_prompt)
+            final_llm_message = await _lmstudio_connection.generate(summarization_prompt)
+            final_llm_content = final_llm_message.get("content", "Error summarizing CLI result.")
+            final_llm_reasoning = final_llm_message.get("reasoning")
+
 
             # Return the summarized response to Unity, with no commands to execute
-            return {"status": "success", "llm_response": final_llm_response, "commands": []}
+            return {"status": "success", "llm_response": final_llm_content, "reasoning": final_llm_reasoning, "commands": []}
 
         except subprocess.TimeoutExpired:
             logger.error("CLI command timed out: %s", cli_command_str)
@@ -508,7 +513,7 @@ async def process_request(request: Dict[str, Any]):
             return {"status": "error", "llm_response": f"An unexpected error occurred while running the command: {e}", "commands": []}
 
     # If no CLI command, return the original response
-    return {"status": "success", "llm_response": llm_resp, "commands": commands}
+    return {"status": "success", "llm_response": llm_content, "reasoning": llm_reasoning, "commands": commands}
 
 
 @app.get("/api/status")

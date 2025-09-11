@@ -347,9 +347,17 @@ namespace UnityLocalAi
 
                 var result = JObject.Parse(responseJson);
                 string llmResponse = result["llm_response"]?.ToString() ?? "No text response.";
+                string reasoning = result["reasoning"]?.ToString();
+
+                string finalResponse = llmResponse;
+                if (!string.IsNullOrEmpty(reasoning))
+                {
+                    finalResponse = $"<color=#808080><b>Reasoning:</b>\n{reasoning}</color>\n\n{llmResponse}";
+                }
+
                 JArray commands = result["commands"] as JArray;
 
-                UpdateLastAssistantMessage(llmResponse);
+                UpdateLastAssistantMessage(finalResponse);
 
                 if (commands != null && commands.Count > 0)
                 {
