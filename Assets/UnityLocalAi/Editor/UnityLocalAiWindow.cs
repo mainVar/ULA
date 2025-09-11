@@ -266,19 +266,7 @@ namespace UnityLocalAi
                 "Are you sure you want to permanently delete this chat session?", "Delete", "Cancel"))
             {
                 ChatHistoryManager.DeleteSession(selectedSession);
-                allSessions.Remove(selectedSession);
-
-                chatHistoryList.Rebuild();
-
-                if (allSessions.Any())
-                {
-                    chatHistoryList.selectedIndex = 0;
-                    LoadChatSession(allSessions[0]);
-                }
-                else
-                {
-                    StartNewChatSession();
-                }
+                LoadConfigAndState(); // Reload the entire state from disk
             }
         }
 
