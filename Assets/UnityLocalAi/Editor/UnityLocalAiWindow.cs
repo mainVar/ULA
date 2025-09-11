@@ -98,6 +98,7 @@ namespace UnityLocalAi
             isCopyModeEnabled = !isCopyModeEnabled;
             copyModeButton.text = isCopyModeEnabled ? "View Mode" : "Select Text";
             RefreshChatView();
+            copyModeButton.Focus();
         }
 
         private void RefreshChatView()
@@ -411,6 +412,8 @@ namespace UnityLocalAi
                     finalResponse = $"<b>Reasoning:</b>\n{reasoning}\n\n{llmResponse}";
                 }
 
+                // The `commands` array is parsed directly from the server's JSON response.
+                // It is separate from the `llm_response` and `reasoning` fields which are combined for display.
                 JArray commands = result["commands"] as JArray;
 
                 UpdateLastAssistantMessage(finalResponse);
