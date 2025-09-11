@@ -231,6 +231,7 @@ namespace UnityLocalAi
             {
                 StartNewChatSession();
             }
+            UpdateDeleteButtonState();
         }
 
         private void StartNewChatSession()
@@ -245,6 +246,7 @@ namespace UnityLocalAi
             chatHistoryList.Rebuild();
             chatHistoryList.selectedIndex = 0;
             LoadChatSession(newSession);
+            UpdateDeleteButtonState();
         }
 
         private void OnDeleteChatButtonPressed()
@@ -253,12 +255,6 @@ namespace UnityLocalAi
             if (selectedSession == null)
             {
                 Debug.LogWarning("[MCP] No chat session selected to delete.");
-                return;
-            }
-
-            if (currentSession != null && selectedSession.sessionId == currentSession.sessionId)
-            {
-                EditorUtility.DisplayDialog("Cannot Delete Active Chat", "You cannot delete the chat session that is currently active. Please switch to another chat first.", "OK");
                 return;
             }
 
@@ -277,6 +273,11 @@ namespace UnityLocalAi
             {
                 LoadChatSession(selectedSession);
             }
+        }
+
+        private void UpdateDeleteButtonState()
+        {
+            deleteChatButton.SetEnabled(allSessions != null && allSessions.Count > 1);
         }
 
         private void LoadChatSession(ChatSession session)
