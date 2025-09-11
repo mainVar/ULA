@@ -294,11 +294,29 @@ namespace UnityLocalAi
 
         private void AddMessageToView(ChatMessage message, bool isProcessing = false)
         {
-            var messageLabel = new Label(message.content) { name = isProcessing ? "processing-message" : "" };
-            messageLabel.AddToClassList(message.sender == "You" ? "chat-message-user" : "chat-message-assistant");
-            messageLabel.style.whiteSpace = WhiteSpace.Normal;
-            chatScrollView.Add(messageLabel);
-            chatScrollView.schedule.Execute(() => chatScrollView.ScrollTo(chatScrollView.contentContainer[chatScrollView.contentContainer.childCount-1])).StartingIn(10);
+            var messageField = new TextField
+            {
+                value = message.content,
+                name = isProcessing ? "processing-message" : "",
+                isReadOnly = true,
+                multiline = true
+            };
+            messageField.AddToClassList(message.sender == "You" ? "chat-message-user" : "chat-message-assistant");
+            messageField.style.whiteSpace = WhiteSpace.Normal;
+
+            // Make TextField look like a Label by removing the border and background of its input element
+            var textInput = messageField.Q(TextField.textInputUssName);
+            if (textInput != null)
+            {
+                textInput.style.borderTopWidth = 0;
+                textInput.style.borderBottomWidth = 0;
+                textInput.style.borderLeftWidth = 0;
+                textInput.style.borderRightWidth = 0;
+                textInput.style.backgroundColor = new StyleColor(StyleKeyword.None);
+            }
+
+            chatScrollView.Add(messageField);
+            chatScrollView.schedule.Execute(() => chatScrollView.ScrollTo(chatScrollView.contentContainer[chatScrollView.contentContainer.childCount - 1])).StartingIn(10);
         }
 
         private void OnSendButtonPressed()
@@ -352,7 +370,7 @@ namespace UnityLocalAi
                 string finalResponse = llmResponse;
                 if (!string.IsNullOrEmpty(reasoning))
                 {
-                    finalResponse = $"<color=#808080><b>Reasoning:</b>\n{reasoning}</color>\n\n{llmResponse}";
+                    finalResponse = $"<b>Reasoning:</b>\n{reasoning}\n\n{llmResponse}";
                 }
 
                 JArray commands = result["commands"] as JArray;
@@ -381,11 +399,11 @@ namespace UnityLocalAi
                 ChatHistoryManager.SaveSession(currentSession);
             }
 
-            var processingLabel = chatScrollView.Q<Label>("processing-message");
-            if (processingLabel != null)
+            var processingField = chatScrollView.Q<TextField>("processing-message");
+            if (processingField != null)
             {
-                processingLabel.text = newMessage;
-                processingLabel.name = "";
+                processingField.value = newMessage;
+                processingField.name = "";
             }
         }
 
