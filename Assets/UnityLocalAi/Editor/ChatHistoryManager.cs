@@ -38,13 +38,19 @@ namespace UnityLocalAi
 
     public static class ChatHistoryManager
     {
-        private static readonly string chatLogsPath = Path.Combine(Application.dataPath, "..", "ChatLogs");
+    public static string ChatLogsPath
+    {
+        get
+        {
+            return EditorPrefs.GetString(SettingsWindow.ChatHistoryPathKey, SettingsWindow.GetDefaultChatPath());
+        }
+    }
 
         static ChatHistoryManager()
         {
-            if (!Directory.Exists(chatLogsPath))
+        if (!Directory.Exists(ChatLogsPath))
             {
-                Directory.CreateDirectory(chatLogsPath);
+            Directory.CreateDirectory(ChatLogsPath);
             }
         }
 
@@ -52,7 +58,8 @@ namespace UnityLocalAi
         {
             try
             {
-                string filePath = Path.Combine(chatLogsPath, $"{session.sessionId}.json");
+            if (!Directory.Exists(ChatLogsPath)) Directory.CreateDirectory(ChatLogsPath);
+            string filePath = Path.Combine(ChatLogsPath, $"{session.sessionId}.json");
                 string json = JsonConvert.SerializeObject(session, Formatting.Indented);
                 File.WriteAllText(filePath, json);
             }
@@ -67,7 +74,8 @@ namespace UnityLocalAi
             var sessions = new List<ChatSession>();
             try
             {
-                var files = Directory.GetFiles(chatLogsPath, "*.json");
+            if (!Directory.Exists(ChatLogsPath)) Directory.CreateDirectory(ChatLogsPath);
+            var files = Directory.GetFiles(ChatLogsPath, "*.json");
                 foreach (var file in files)
                 {
                     string json = File.ReadAllText(file);
@@ -84,6 +92,23 @@ namespace UnityLocalAi
             }
             sessions.Sort((a, b) => b.createdAt.CompareTo(a.createdAt));
             return sessions;
+        }
+
+        public static void DeleteSession(ChatSession session)
+        {
+            if (session == null) return;
+            try
+            {
+            string filePath = Path.Combine(ChatLogsPath, $"{session.sessionId}.json");
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[ChatHistoryManager] Failed to delete chat session {session.sessionId}: {ex.Message}");
+            }
         }
     }
 }

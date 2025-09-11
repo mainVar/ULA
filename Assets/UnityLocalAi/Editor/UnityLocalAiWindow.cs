@@ -52,6 +52,8 @@ namespace UnityLocalAi
         private Button sendButton;
         private ListView chatHistoryList;
         private Button newChatButton;
+        private Button deleteChatButton;
+        private Button settingsButton;
 
         // --- Networking ---
         private static readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
@@ -72,6 +74,20 @@ namespace UnityLocalAi
             {
                 EditorPrefs.SetString(EDITOR_PREFS_KEY, currentSession.sessionId);
                 ChatHistoryManager.SaveSession(currentSession);
+            }
+        }
+
+        private void OnFocus()
+        {
+            // When the window gets focus, check if the chat history needs to be reloaded.
+            // This is a simple way to update the list if the path was changed in the settings.
+            if(allSessions != null && chatHistoryList != null)
+            {
+                var sessionsOnDisk = ChatHistoryManager.LoadAllSessions();
+                if (sessionsOnDisk.Count != allSessions.Count || !sessionsOnDisk.SequenceEqual(allSessions))
+                {
+                    LoadConfigAndState();
+                }
             }
         }
 
@@ -133,6 +149,8 @@ namespace UnityLocalAi
             sendButton = rootVisualElement.Q<Button>("SendButton");
             chatHistoryList = rootVisualElement.Q<ListView>("ChatHistoryList");
             newChatButton = rootVisualElement.Q<Button>("NewChatButton");
+            deleteChatButton = rootVisualElement.Q<Button>("DeleteChatButton");
+            settingsButton = rootVisualElement.Q<Button>("SettingsButton");
         }
 
         private void RegisterCallbacks()
@@ -142,6 +160,8 @@ namespace UnityLocalAi
             applyLMConfigButton.clicked += UpdateLMStudioConfigOnServer;
             sendButton.clicked += OnSendButtonPressed;
             newChatButton.clicked += StartNewChatSession;
+            deleteChatButton.clicked += OnDeleteChatButtonPressed;
+            settingsButton.clicked += SettingsWindow.ShowWindow;
 
             lmstudioHostField.RegisterValueChangedCallback(evt => lmstudioHost = evt.newValue);
             lmstudioPortField.RegisterValueChangedCallback(evt => lmstudioPort = evt.newValue);
@@ -231,6 +251,35 @@ namespace UnityLocalAi
             chatHistoryList.Rebuild();
             chatHistoryList.selectedIndex = 0;
             LoadChatSession(newSession);
+        }
+
+        private void OnDeleteChatButtonPressed()
+        {
+            var selectedSession = chatHistoryList.selectedItem as ChatSession;
+            if (selectedSession == null)
+            {
+                Debug.LogWarning("[MCP] No chat session selected to delete.");
+                return;
+            }
+
+            if (EditorUtility.DisplayDialog("Delete Chat Session?",
+                "Are you sure you want to permanently delete this chat session?", "Delete", "Cancel"))
+            {
+                ChatHistoryManager.DeleteSession(selectedSession);
+                allSessions.Remove(selectedSession);
+
+                chatHistoryList.Rebuild();
+
+                if (allSessions.Any())
+                {
+                    chatHistoryList.selectedIndex = 0;
+                    LoadChatSession(allSessions[0]);
+                }
+                else
+                {
+                    StartNewChatSession();
+                }
+            }
         }
 
         private void LoadChatSession(ChatSession session)

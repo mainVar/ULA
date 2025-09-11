@@ -4,14 +4,17 @@
         <ui:VisualElement name="Header" class="header">
             <ui:Label text="Unity Local AI" class="header-title" />
             <ui:VisualElement name="HeaderButtons">
-                <ui:Button name="SettingsButton" class="header-button" />
+                <ui:Button name="SettingsButton" text="Settings" class="header-button" />
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement name="MainContent" class="main-content">
             <ui:VisualElement name="LeftPanel" class="left-panel">
                 <ui:VisualElement name="ChatHistorySection" class="config-section">
                     <ui:Label text="Chat Sessions" class="section-header" />
-                    <ui:Button name="NewChatButton" text="New Chat" class="new-chat-button" />
+                    <ui:VisualElement style="flex-direction: row; justify-content: space-around; margin-bottom: 5px;">
+                        <ui:Button name="NewChatButton" text="New Chat" class="new-chat-button" style="flex-grow: 1; margin-right: 2px;" />
+                        <ui:Button name="DeleteChatButton" text="Delete Chat" class="delete-chat-button" style="flex-grow: 1; margin-left: 2px;" />
+                    </ui:VisualElement>
                     <ui:ListView name="ChatHistoryList" class="chat-history-list" />
                 </ui:VisualElement>
                 <ui:VisualElement name="ServerStatusSection" class="config-section">

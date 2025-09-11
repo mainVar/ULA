@@ -115,6 +115,7 @@
 .chat-scroll-view {
     flex-grow: 1;
     padding: 10px;
+    overflow: scroll;
 }
 
 .input-container {
