@@ -34,6 +34,7 @@ namespace UnityLocalAi
         // --- Chat ---
         private ChatSession currentSession;
         private List<ChatSession> allSessions;
+        private bool isCopyModeEnabled = false;
 
         // --- UI Toolkit Elements ---
         private VisualElement pythonServerStatusIndicator;
@@ -54,6 +55,7 @@ namespace UnityLocalAi
         private Button newChatButton;
         private Button deleteChatButton;
         private Button settingsButton;
+        private Button copyModeButton;
 
         // --- Networking ---
         private static readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
@@ -89,6 +91,73 @@ namespace UnityLocalAi
                     LoadConfigAndState();
                 }
             }
+        }
+
+        private void ToggleCopyMode()
+        {
+            isCopyModeEnabled = !isCopyModeEnabled;
+            copyModeButton.text = isCopyModeEnabled ? "View Mode" : "Select Text";
+            RefreshChatView();
+        }
+
+        private void RefreshChatView()
+        {
+            if (chatScrollView == null || currentSession?.messages == null) return;
+
+            chatScrollView.Clear();
+            foreach (var message in currentSession.messages)
+            {
+                VisualElement messageElement;
+                string messageName = "";
+
+                // Assign a name to the last message so it can be found and updated
+                if (currentSession.messages.IndexOf(message) == currentSession.messages.Count - 1)
+                {
+                    var lastMessage = currentSession.messages.LastOrDefault();
+                    if (lastMessage != null && lastMessage.sender == "Assistant" && lastMessage.content == "...")
+                    {
+                        messageName = "processing-message";
+                    }
+                }
+
+                if (isCopyModeEnabled)
+                {
+                    var messageField = new TextField
+                    {
+                        value = message.content,
+                        name = messageName,
+                        isReadOnly = true,
+                        multiline = true
+                    };
+                    messageField.AddToClassList(message.sender == "You" ? "chat-message-user" : "chat-message-assistant");
+                    messageField.style.whiteSpace = WhiteSpace.Normal;
+                    var textInput = messageField.Q(TextField.textInputUssName);
+                    if (textInput != null)
+                    {
+                        textInput.style.borderTopWidth = 0;
+                        textInput.style.borderBottomWidth = 0;
+                        textInput.style.borderLeftWidth = 0;
+                        textInput.style.borderRightWidth = 0;
+                        textInput.style.backgroundColor = new StyleColor(StyleKeyword.None);
+                    }
+                    messageElement = messageField;
+                }
+                else
+                {
+                    var messageLabel = new Label(message.content)
+                    {
+                        name = messageName
+                    };
+                    messageLabel.AddToClassList(message.sender == "You" ? "chat-message-user" : "chat-message-assistant");
+                    messageLabel.style.whiteSpace = WhiteSpace.Normal;
+                    messageElement = messageLabel;
+                }
+                chatScrollView.Add(messageElement);
+            }
+            chatScrollView.schedule.Execute(() => {
+                if (chatScrollView.contentContainer.childCount > 0)
+                    chatScrollView.ScrollTo(chatScrollView.contentContainer.ElementAt(chatScrollView.contentContainer.childCount - 1));
+            }).StartingIn(10);
         }
 
         private void OnPlayModeStateChanged(PlayModeStateChange state)
@@ -151,6 +220,7 @@ namespace UnityLocalAi
             newChatButton = rootVisualElement.Q<Button>("NewChatButton");
             deleteChatButton = rootVisualElement.Q<Button>("DeleteChatButton");
             settingsButton = rootVisualElement.Q<Button>("SettingsButton");
+            copyModeButton = rootVisualElement.Q<Button>("CopyModeButton");
         }
 
         private void RegisterCallbacks()
@@ -162,6 +232,7 @@ namespace UnityLocalAi
             newChatButton.clicked += StartNewChatSession;
             deleteChatButton.clicked += OnDeleteChatButtonPressed;
             settingsButton.clicked += SettingsWindow.ShowWindow;
+            copyModeButton.clicked += ToggleCopyMode;
 
             lmstudioHostField.RegisterValueChangedCallback(evt => lmstudioHost = evt.newValue);
             lmstudioPortField.RegisterValueChangedCallback(evt => lmstudioPort = evt.newValue);
@@ -283,40 +354,8 @@ namespace UnityLocalAi
         private void LoadChatSession(ChatSession session)
         {
             currentSession = session;
-            chatScrollView.Clear();
-            if(currentSession.messages == null) currentSession.messages = new List<ChatMessage>();
-
-            foreach (var message in currentSession.messages)
-            {
-                AddMessageToView(message);
-            }
-        }
-
-        private void AddMessageToView(ChatMessage message, bool isProcessing = false)
-        {
-            var messageField = new TextField
-            {
-                value = message.content,
-                name = isProcessing ? "processing-message" : "",
-                isReadOnly = true,
-                multiline = true
-            };
-            messageField.AddToClassList(message.sender == "You" ? "chat-message-user" : "chat-message-assistant");
-            messageField.style.whiteSpace = WhiteSpace.Normal;
-
-            // Make TextField look like a Label by removing the border and background of its input element
-            var textInput = messageField.Q(TextField.textInputUssName);
-            if (textInput != null)
-            {
-                textInput.style.borderTopWidth = 0;
-                textInput.style.borderBottomWidth = 0;
-                textInput.style.borderLeftWidth = 0;
-                textInput.style.borderRightWidth = 0;
-                textInput.style.backgroundColor = new StyleColor(StyleKeyword.None);
-            }
-
-            chatScrollView.Add(messageField);
-            chatScrollView.schedule.Execute(() => chatScrollView.ScrollTo(chatScrollView.contentContainer[chatScrollView.contentContainer.childCount - 1])).StartingIn(10);
+            if (currentSession.messages == null) currentSession.messages = new List<ChatMessage>();
+            RefreshChatView();
         }
 
         private void OnSendButtonPressed()
@@ -344,12 +383,11 @@ namespace UnityLocalAi
         {
             var userMessage = new ChatMessage("You", message);
             currentSession.messages.Add(userMessage);
-            AddMessageToView(userMessage);
 
             var assistantMessage = new ChatMessage("Assistant", "...");
             currentSession.messages.Add(assistantMessage);
-            AddMessageToView(assistantMessage, true);
 
+            RefreshChatView();
             ChatHistoryManager.SaveSession(currentSession);
 
             try
@@ -399,12 +437,7 @@ namespace UnityLocalAi
                 ChatHistoryManager.SaveSession(currentSession);
             }
 
-            var processingField = chatScrollView.Q<TextField>("processing-message");
-            if (processingField != null)
-            {
-                processingField.value = newMessage;
-                processingField.name = "";
-            }
+            RefreshChatView();
         }
 
         private async Task FetchAvailableModels()

@@ -12,8 +12,8 @@
                 <ui:VisualElement name="ChatHistorySection" class="config-section">
                     <ui:Label text="Chat Sessions" class="section-header" />
                     <ui:VisualElement style="flex-direction: row; justify-content: space-around; margin-bottom: 5px;">
-                        <ui:Button name="NewChatButton" text="New Chat" style="flex-grow: 1; margin-right: 2px;" />
-                        <ui:Button name="DeleteChatButton" text="Delete Chat" style="flex-grow: 1; margin-left: 2px;" />
+                        <ui:Button name="NewChatButton" text="New Chat" class="new-chat-button" style="flex-grow: 1; margin-right: 2px;" />
+                        <ui:Button name="DeleteChatButton" text="Delete Chat" class="delete-chat-button" style="flex-grow: 1; margin-left: 2px;" />
                     </ui:VisualElement>
                     <ui:ListView name="ChatHistoryList" class="chat-history-list" />
                 </ui:VisualElement>
@@ -43,12 +43,11 @@
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement name="RightPanel" class="right-panel">
+                <ui:Button name="CopyModeButton" text="Select Text" class="copy-mode-button" style="margin-left: 5px; margin-right: 5px; margin-top: 2px; margin-bottom: 2px;" />
                 <ui:ScrollView name="ChatScrollView" class="chat-scroll-view" />
                 <ui:VisualElement name="InputContainer" class="input-container">
-                    <ui:TextField name="ChatInput" multiline="true" class="chat-input" style="flex-grow: 0; width: 92%;" />
-                    <ui:Button name="SendButton" class="send-button" style="align-self: center; justify-content: center; position: relative;">
-                        <ui:VisualElement name="Image" style="background-image: url(&quot;project://database/Assets/UnityLocalAi/Editor/UI/Icons/nf-send.png?fileID=2800000&amp;guid=a6c23a43f83db8e4bbc23bf4134aa7ff&amp;type=3#nf-send&quot;); align-self: center; align-items: center; width: 100%; height: 100%;" />
-                    </ui:Button>
+                    <ui:TextField name="ChatInput" multiline="true" class="chat-input" />
+                    <ui:Button name="SendButton" class="send-button" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>

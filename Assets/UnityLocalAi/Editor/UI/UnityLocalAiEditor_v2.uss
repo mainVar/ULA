@@ -1,3 +1,4 @@
+/* --- Main Layout --- */
 .main-window {
     flex-grow: 1;
     flex-direction: column;
@@ -26,6 +27,7 @@
     flex-direction: row;
 }
 
+/* --- Left Panel --- */
 .left-panel {
     width: 280px;
     min-width: 250px;
@@ -50,6 +52,10 @@
     color: rgb(200, 200, 200);
 }
 
+.new-chat-button {
+    margin-bottom: 8px;
+}
+
 .chat-history-list {
     flex-grow: 1;
     min-height: 100px;
@@ -61,11 +67,11 @@
 }
 
 .chat-history-list .unity-list-view__item:hover {
-    background-color: rgba(86, 156, 214, 0.3);
+    background-color: rgba(86, 156, 214, 0.3); /* A subtle blue hover */
 }
 
 .chat-history-list .unity-list-view__item--selected {
-    background-color: rgb(86, 156, 214);
+    background-color: rgb(86, 156, 214); /* A nice blue for selection */
     color: white;
 }
 
@@ -99,6 +105,7 @@
     margin-left: 10px;
 }
 
+/* --- Right Panel (Chat) --- */
 .right-panel {
     flex-grow: 1;
     flex-direction: column;
@@ -145,6 +152,7 @@
     background-color: rgb(100, 170, 220);
 }
 
+/* --- Chat Messages --- */
 .chat-message-user {
     background-color: rgb(86, 156, 214);
     color: white;
@@ -152,7 +160,7 @@
     border-radius: 8px;
     margin: 5px 0;
     align-self: flex-end;
-    max-width: 90%;
+    max-width: 80%;
     white-space: normal;
 }
 
@@ -163,6 +171,6 @@
     border-radius: 8px;
     margin: 5px 0;
     align-self: flex-start;
-    max-width: 100%;
+    max-width: 80%;
     white-space: normal;
 }
