@@ -256,6 +256,12 @@ namespace UnityLocalAi
                 return;
             }
 
+            if (currentSession != null && selectedSession.sessionId == currentSession.sessionId)
+            {
+                EditorUtility.DisplayDialog("Cannot Delete Active Chat", "You cannot delete the chat session that is currently active. Please switch to another chat first.", "OK");
+                return;
+            }
+
             if (EditorUtility.DisplayDialog("Delete Chat Session?",
                 "Are you sure you want to permanently delete this chat session?", "Delete", "Cancel"))
             {
