@@ -9,7 +9,7 @@ using UnityEngine;
 namespace UnityLocalAi
 {
     [Serializable]
-    public struct ChatMessage
+    public struct ChatMessage : IEquatable<ChatMessage>
     {
         public string sender;
         public string content;
@@ -19,10 +19,28 @@ namespace UnityLocalAi
             this.sender = sender;
             this.content = content;
         }
+
+        public bool Equals(ChatMessage other)
+        {
+            return sender == other.sender && content == other.content;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ChatMessage other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return ((sender != null ? sender.GetHashCode() : 0) * 397) ^ (content != null ? content.GetHashCode() : 0);
+            }
+        }
     }
 
     [Serializable]
-    public class ChatSession
+    public class ChatSession : IEquatable<ChatSession>
     {
         public string sessionId;
         public List<ChatMessage> messages;
@@ -33,6 +51,40 @@ namespace UnityLocalAi
             sessionId = Guid.NewGuid().ToString();
             messages = new List<ChatMessage>();
             createdAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        }
+
+        public bool Equals(ChatSession other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return sessionId == other.sessionId && createdAt == other.createdAt && messages.SequenceEqual(other.messages);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj.GetType() != this.GetType()) return false;
+            return Equals((ChatSession) obj);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var hashCode = (sessionId != null ? sessionId.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ createdAt.GetHashCode();
+                // Note: Hashing the messages list content might be slow for long chats,
+                // but it's necessary for correct SequenceEqual comparison logic.
+                if (messages != null)
+                {
+                    foreach (var msg in messages)
+                    {
+                        hashCode = (hashCode * 397) ^ msg.GetHashCode();
+                    }
+                }
+                return hashCode;
+            }
         }
     }
 

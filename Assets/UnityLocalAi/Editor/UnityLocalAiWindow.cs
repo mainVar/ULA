@@ -211,14 +211,8 @@ namespace UnityLocalAi
 
             chatHistoryList.itemsSource = allSessions;
 
-            chatHistoryList.onSelectionChange += (enumerable) =>
-            {
-                var selectedSession = enumerable.FirstOrDefault() as ChatSession;
-                if (selectedSession != null && selectedSession != currentSession)
-                {
-                    LoadChatSession(selectedSession);
-                }
-            };
+            chatHistoryList.onSelectionChange -= OnChatSelectionChanged; // Unsubscribe to prevent multiple handlers
+            chatHistoryList.onSelectionChange += OnChatSelectionChanged; // Subscribe with the named method
 
             string lastSessionId = EditorPrefs.GetString(EDITOR_PREFS_KEY, null);
             var lastSession = allSessions.FirstOrDefault(s => s.sessionId == lastSessionId);
@@ -267,6 +261,15 @@ namespace UnityLocalAi
             {
                 ChatHistoryManager.DeleteSession(selectedSession);
                 LoadConfigAndState(); // Reload the entire state from disk
+            }
+        }
+
+        private void OnChatSelectionChanged(IEnumerable<object> enumerable)
+        {
+            var selectedSession = enumerable.FirstOrDefault() as ChatSession;
+            if (selectedSession != null && selectedSession != currentSession)
+            {
+                LoadChatSession(selectedSession);
             }
         }
 
