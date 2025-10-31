@@ -1,3 +1,5 @@
-uvicorn
 fastapi
+uvicorn
 aiohttp
+python-dotenv
+requests
