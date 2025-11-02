@@ -66,9 +66,17 @@ public class MCPToolsWindow : EditorWindow
                 var argumentsContainer = toolItem.Q("arguments-container");
                 foreach (var arg in tool.Arguments)
                 {
-                    var argItem = new VisualElement() { className = "argument-item" };
-                    argItem.Add(new Label(arg.Name) { className = "argument-name" });
-                    argItem.Add(new Label(arg.Description) { className = "argument-description" });
+                    var argItem = new VisualElement();
+                    argItem.AddToClassList("argument-item");
+
+                    var nameLabel = new Label(arg.Name);
+                    nameLabel.AddToClassList("argument-name");
+                    argItem.Add(nameLabel);
+
+                    var descriptionLabel = new Label(arg.Description);
+                    descriptionLabel.AddToClassList("argument-description");
+                    argItem.Add(descriptionLabel);
+
                     argumentsContainer.Add(argItem);
                 }
             }

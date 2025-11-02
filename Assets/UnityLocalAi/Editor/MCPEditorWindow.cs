@@ -58,13 +58,13 @@ namespace UnityLocalAi
             ServerStatusUI.DrawPythonServerSection(pythonServerStatus, pythonServerColor, StartPythonServer);
             EditorGUILayout.Space(10);
 
-            LLMConfigUI.Draw(llmConfig, UpdateLMStudioConfigOnServer, FetchAvailableModels);
+            LLMConfigUI.Draw(llmConfig, UpdateLMStudioConfigOnServer, () => FetchAvailableModels());
             EditorGUILayout.Space(10);
 
-            ServerStatusUI.DrawLMStudioSection(lmstudioStatusMessage, CheckLMStudioStatus);
+            ServerStatusUI.DrawLMStudioSection(lmstudioStatusMessage, () => CheckLMStudioStatus());
             EditorGUILayout.Space(10);
 
-            ChatUI.Draw(chatHistory, ref userInput, SendChatMessage);
+            ChatUI.Draw(chatHistory.ConvertAll(m => new UnityLocalAi.UI.ChatMessage(m.Sender, m.Message)), ref userInput, SendChatMessage);
         }
 
         private async void SendChatMessage(string message)
