@@ -58,14 +58,19 @@ namespace UnityLocalAi
             ServerStatusUI.DrawPythonServerSection(pythonServerStatus, pythonServerColor, StartPythonServer);
             EditorGUILayout.Space(10);
 
-            LLMConfigUI.Draw(llmConfig, UpdateLMStudioConfigOnServer, FetchAvailableModels);
+            // Wrap async methods so they match the Action delegate expected by the UI helpers.
+            LLMConfigUI.Draw(llmConfig, UpdateLMStudioConfigOnServer, FetchAvailableModelsWrapper);
             EditorGUILayout.Space(10);
 
-            ServerStatusUI.DrawLMStudioSection(lmstudioStatusMessage, CheckLMStudioStatus);
+            ServerStatusUI.DrawLMStudioSection(lmstudioStatusMessage, CheckLMStudioStatusWrapper);
             EditorGUILayout.Space(10);
 
             ChatUI.Draw(chatHistory, ref userInput, SendChatMessage);
         }
+
+        // Helper wrappers to call async Task methods from UI callbacks that expect Action.
+        private void FetchAvailableModelsWrapper() => _ = FetchAvailableModels();
+        private void CheckLMStudioStatusWrapper() => _ = CheckLMStudioStatus();
 
         private async void SendChatMessage(string message)
         {

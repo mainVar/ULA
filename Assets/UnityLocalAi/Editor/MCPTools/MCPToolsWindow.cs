@@ -1,6 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using System;
 using System.Collections.Generic;
 
 public class MCPToolsWindow : EditorWindow
@@ -21,9 +22,29 @@ public class MCPToolsWindow : EditorWindow
         visualTree.CloneTree(root);
 
         var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/UnityLocalAi/Editor/MCPTools/MCPToolsWindow.uss");
-        root.styleSheets.Add(styleSheet);
+        // Add USS stylesheet with a safe try/catch so we get styles back (animations + toggle visuals),
+        // but avoid editor crashes if the stylesheet causes parsing/runtime errors in some Unity builds.
+        if (styleSheet != null)
+        {
+            try
+            {
+                root.styleSheets.Add(styleSheet);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[MCPTools] Skipped adding USS due to error: {ex.Message}");
+            }
+        }
 
         toolItemTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/MCPTools/ToolItem.uxml");
+
+        // Populate simple DropdownField choices from code to avoid UXML <Choice> deserialization issues.
+        var typeDropdown = root.Q<DropdownField>("type-dropdown");
+        if (typeDropdown != null)
+        {
+            typeDropdown.choices = new List<string> { "Enabled", "Disabled", "All" };
+            typeDropdown.index = 0;
+        }
 
         PopulateToolList();
     }
@@ -41,12 +62,23 @@ public class MCPToolsWindow : EditorWindow
             toolItem.Q<Label>("tool-id").text = tool.Id;
             var toolToggle = toolItem.Q<Toggle>("tool-toggle");
             toolToggle.value = tool.IsEnabled;
+            // Ensure the Toggle has a 'checked' class when initialized so USS can style it.
+            if (toolToggle != null) toolToggle.EnableInClassList("checked", tool.IsEnabled);
 
-            var toolItemContainer = toolItem.Q<VisualElement>("tool-item-container");
+            // The UXML uses class="tool-item-container" (not name). Query by class to find it.
+            var toolItemContainer = toolItem.Q<VisualElement>(null, "tool-item-container");
+            // Fallback: if not found, use the root element of the instantiated template.
+            if (toolItemContainer == null) toolItemContainer = toolItem;
+
             UpdateToolItemClasses(toolItemContainer, toolToggle.value);
 
+            // Capture the container reference for the callback to avoid re-querying.
+            var capturedContainer = toolItemContainer;
+            var capturedToggle = toolToggle;
             toolToggle.RegisterValueChangedCallback(evt => {
-                UpdateToolItemClasses(toolItemContainer, evt.newValue);
+                // Update checked class on the Toggle itself so USS rules targeting .unity-toggle.checked apply.
+                if (capturedToggle != null) capturedToggle.EnableInClassList("checked", evt.newValue);
+                UpdateToolItemClasses(capturedContainer, evt.newValue);
             });
 
             var descriptionFoldout = toolItem.Q<Foldout>("description-foldout");
@@ -66,9 +98,17 @@ public class MCPToolsWindow : EditorWindow
                 var argumentsContainer = toolItem.Q("arguments-container");
                 foreach (var arg in tool.Arguments)
                 {
-                    var argItem = new VisualElement() { className = "argument-item" };
-                    argItem.Add(new Label(arg.Name) { className = "argument-name" });
-                    argItem.Add(new Label(arg.Description) { className = "argument-description" });
+                    var argItem = new VisualElement();
+                    argItem.AddToClassList("argument-item");
+
+                    var nameLabel = new Label(arg.Name);
+                    nameLabel.AddToClassList("argument-name");
+                    argItem.Add(nameLabel);
+
+                    var descLabel = new Label(arg.Description);
+                    descLabel.AddToClassList("argument-description");
+                    argItem.Add(descLabel);
+
                     argumentsContainer.Add(argItem);
                 }
             }
@@ -83,6 +123,7 @@ public class MCPToolsWindow : EditorWindow
 
     private void UpdateToolItemClasses(VisualElement toolItemContainer, bool isEnabled)
     {
+        if (toolItemContainer == null) return;
         toolItemContainer.EnableInClassList("enabled", isEnabled);
         toolItemContainer.EnableInClassList("disabled", !isEnabled);
     }

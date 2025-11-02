@@ -17,16 +17,16 @@ namespace UnityLocalAi.UI
             assistantStyle = new GUIStyle(EditorStyles.label) { wordWrap = true, richText = true, normal = { textColor = Color.white }, padding = new RectOffset(10, 10, 5, 5) };
         }
 
-        public static void Draw(List<ChatMessage> chatHistory, ref string userInput, Action<string> onSendMessage)
+        public static void Draw(List<UnityLocalAi.ChatMessage> chatHistory, ref string userInput, Action<string> onSendMessage)
         {
             if (userStyle == null)
             {
                 InitializeStyles();
             }
-
+    
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             EditorGUILayout.LabelField("Chat with Unity via LM Studio", EditorStyles.boldLabel);
-
+    
             using (var chatScroll = new EditorGUILayout.ScrollViewScope(chatScrollPosition, GUILayout.Height(300)))
             {
                 chatScrollPosition = chatScroll.scrollPosition;
@@ -38,7 +38,7 @@ namespace UnityLocalAi.UI
                     EditorGUILayout.Space(5);
                 }
             }
-
+    
             userInput = EditorGUILayout.TextArea(userInput, GUILayout.Height(60));
             if (GUILayout.Button("Send") && !string.IsNullOrEmpty(userInput))
             {
@@ -50,11 +50,4 @@ namespace UnityLocalAi.UI
         }
     }
 
-    [Serializable]
-    public readonly struct ChatMessage
-    {
-        public readonly string sender;
-        public readonly string content;
-        public ChatMessage(string sender, string content) { this.sender = sender; this.content = content; }
-    }
 }

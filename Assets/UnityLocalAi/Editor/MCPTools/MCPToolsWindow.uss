@@ -113,14 +113,13 @@
     background-color: rgba(139, 0, 0, 0.3); /* DarkRed with transparency */
 }
 
-/* Toggle Switch Styles */
+/* Toggle Switch Styles - minimal and compatible with older USS parsers */
 .unity-toggle .unity-toggle__input {
     width: 40px;
     height: 20px;
     border-radius: 10px;
     background-color: #707070;
     -unity-background-image-tint-color: white;
-    transition: background-color 0.2s;
 }
 
 .unity-toggle .unity-toggle__checkmark {
@@ -128,14 +127,15 @@
     height: 16px;
     border-radius: 8px;
     background-color: white;
-    transform: translateX(2px);
-    transition: transform 0.2s;
+    /* Use margin to shift the checkmark instead of transform for compatibility */
+    margin-left: 2px;
 }
 
-.unity-toggle .unity-toggle__input:checked {
+/* Use the 'checked' class (Unity adds this) to change visual state.
+   Keep changes simple to avoid StylePropertyReader index errors. */
+.unity-toggle.checked .unity-toggle__input {
     background-color: #2E8B57; /* SeaGreen */
 }
-
-.unity-toggle .unity-toggle__input:checked .unity-toggle__checkmark {
-    transform: translateX(22px);
+.unity-toggle.checked .unity-toggle__checkmark {
+    margin-left: 22px;
 }

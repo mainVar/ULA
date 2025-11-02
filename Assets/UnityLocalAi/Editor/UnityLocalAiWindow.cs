@@ -114,10 +114,15 @@ namespace UnityLocalAi
                 // Assign a name to the last message so it can be found and updated
                 if (currentSession.messages.IndexOf(message) == currentSession.messages.Count - 1)
                 {
-                    var lastMessage = currentSession.messages.LastOrDefault();
-                    if (lastMessage != null && lastMessage.sender == "Assistant" && lastMessage.content == "...")
+                    // LastOrDefault returns a struct (ChatMessage). Since ChatMessage is a value type,
+                    // comparing it to null is invalid. Check the list count and use Last() instead.
+                    if (currentSession.messages.Count > 0)
                     {
-                        messageName = "processing-message";
+                        var lastMessage = currentSession.messages.Last();
+                        if (lastMessage.sender == "Assistant" && lastMessage.content == "...")
+                        {
+                            messageName = "processing-message";
+                        }
                     }
                 }
 
