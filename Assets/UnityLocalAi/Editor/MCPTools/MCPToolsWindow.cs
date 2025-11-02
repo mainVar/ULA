@@ -25,6 +25,9 @@ public class MCPToolsWindow : EditorWindow
 
         toolItemTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/MCPTools/ToolItem.uxml");
 
+        var typeDropdown = root.Q<DropdownField>("type-dropdown");
+        typeDropdown.choices = new List<string> { "Enabled", "Disabled", "All" };
+
         PopulateToolList();
     }
 
@@ -42,11 +45,10 @@ public class MCPToolsWindow : EditorWindow
             var toolToggle = toolItem.Q<Toggle>("tool-toggle");
             toolToggle.value = tool.IsEnabled;
 
-            var toolItemContainer = toolItem.Q<VisualElement>("tool-item-container");
-            UpdateToolItemClasses(toolItemContainer, toolToggle.value);
+            UpdateToolItemClasses(toolItem, toolToggle.value);
 
             toolToggle.RegisterValueChangedCallback(evt => {
-                UpdateToolItemClasses(toolItemContainer, evt.newValue);
+                UpdateToolItemClasses(toolItem, evt.newValue);
             });
 
             var descriptionFoldout = toolItem.Q<Foldout>("description-foldout");

@@ -6,11 +6,7 @@
             <ui:Label text="Filter:" class="filter-label" />
             <ui:TextField name="filter-textfield" class="filter-textfield" value="placeholder" />
             <ui:Label text="Type:" class="filter-label" />
-            <ui:DropdownField name="type-dropdown" class="type-dropdown" index="0">
-                <ui:Choice>Enabled</ui:Choice>
-                <ui:Choice>Disabled</ui:Choice>
-                <ui:Choice>All</ui:Choice>
-            </ui:DropdownField>
+            <ui:DropdownField name="type-dropdown" class="type-dropdown" index="0" />
             <ui:Label text="Filtered: 10, Total: 42" name="filter-stats-label" class="filter-stats-label" />
         </ui:VisualElement>
         <ui:ScrollView name="tool-list-scrollview" class="tool-list-scrollview" />

@@ -120,7 +120,6 @@
     border-radius: 10px;
     background-color: #8B0000; /* DarkRed */
     -unity-background-image-tint-color: white;
-    transition: background-color 0.2s;
 }
 
 .unity-toggle .unity-toggle__checkmark {
@@ -129,7 +128,6 @@
     border-radius: 8px;
     background-color: white;
     transform: translateX(2px);
-    transition: transform 0.2s;
 }
 
 .unity-toggle .unity-toggle__input:checked {
