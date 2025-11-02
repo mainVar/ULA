@@ -64,7 +64,7 @@ namespace UnityLocalAi
             ServerStatusUI.DrawLMStudioSection(lmstudioStatusMessage, () => CheckLMStudioStatus());
             EditorGUILayout.Space(10);
 
-            ChatUI.Draw(chatHistory.ConvertAll(m => new UnityLocalAi.UI.ChatMessage(m.Sender, m.Message)), ref userInput, SendChatMessage);
+            ChatUI.Draw(chatHistory.ConvertAll(m => new UnityLocalAi.UI.ChatMessage(m.sender, m.content)), ref userInput, SendChatMessage);
         }
 
         private async void SendChatMessage(string message)

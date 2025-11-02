@@ -115,7 +115,7 @@ namespace UnityLocalAi
                 if (currentSession.messages.IndexOf(message) == currentSession.messages.Count - 1)
                 {
                     var lastMessage = currentSession.messages.LastOrDefault();
-                    if (lastMessage.sender == "Assistant" && lastMessage.content == "...")
+                    if (!lastMessage.Equals(default(ChatMessage)) && lastMessage.sender == "Assistant" && lastMessage.content == "...")
                     {
                         messageName = "processing-message";
                     }
