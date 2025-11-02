@@ -39,7 +39,15 @@ public class MCPToolsWindow : EditorWindow
 
             toolItem.Q<Label>("tool-title").text = tool.Title;
             toolItem.Q<Label>("tool-id").text = tool.Id;
-            toolItem.Q<Toggle>("tool-toggle").value = tool.IsEnabled;
+            var toolToggle = toolItem.Q<Toggle>("tool-toggle");
+            toolToggle.value = tool.IsEnabled;
+
+            var toolItemContainer = toolItem.Q<VisualElement>("tool-item-container");
+            UpdateToolItemClasses(toolItemContainer, toolToggle.value);
+
+            toolToggle.RegisterValueChangedCallback(evt => {
+                UpdateToolItemClasses(toolItemContainer, evt.newValue);
+            });
 
             var descriptionFoldout = toolItem.Q<Foldout>("description-foldout");
             if (!string.IsNullOrEmpty(tool.Description))
@@ -71,6 +79,12 @@ public class MCPToolsWindow : EditorWindow
 
             scrollView.Add(toolItem);
         }
+    }
+
+    private void UpdateToolItemClasses(VisualElement toolItemContainer, bool isEnabled)
+    {
+        toolItemContainer.EnableInClassList("enabled", isEnabled);
+        toolItemContainer.EnableInClassList("disabled", !isEnabled);
     }
 
     // --- Mock Data ---

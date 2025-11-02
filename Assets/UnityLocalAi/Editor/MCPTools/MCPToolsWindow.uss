@@ -103,3 +103,39 @@
     white-space: normal;
     color: #B0B0B0;
 }
+
+/* Tool Item Highlighting */
+.tool-item-container.enabled {
+    background-color: rgba(46, 139, 87, 0.3); /* SeaGreen with transparency */
+}
+
+.tool-item-container.disabled {
+    background-color: rgba(139, 0, 0, 0.3); /* DarkRed with transparency */
+}
+
+/* Toggle Switch Styles */
+.unity-toggle .unity-toggle__input {
+    width: 40px;
+    height: 20px;
+    border-radius: 10px;
+    background-color: #707070;
+    -unity-background-image-tint-color: white;
+    transition: background-color 0.2s;
+}
+
+.unity-toggle .unity-toggle__checkmark {
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    background-color: white;
+    transform: translateX(2px);
+    transition: transform 0.2s;
+}
+
+.unity-toggle .unity-toggle__input:checked {
+    background-color: #2E8B57; /* SeaGreen */
+}
+
+.unity-toggle .unity-toggle__input:checked .unity-toggle__checkmark {
+    transform: translateX(22px);
+}
