@@ -9,8 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Debug = UnityEngine.Debug;
+using Newtonsoft.Json.JObject;
 using UnityLocalAi;
 
 public class UnityLocalAiEditor_v2 : EditorWindow
@@ -21,7 +20,6 @@ public class UnityLocalAiEditor_v2 : EditorWindow
     private ScrollView chatList;
     private VisualElement serverStatusIndicator;
     private Label serverStatusLabel;
-    private Label lmStudioStatusLabel;
     private Button startServerButton;
     private TextField hostTextField;
     private TextField portTextField;
@@ -34,11 +32,17 @@ public class UnityLocalAiEditor_v2 : EditorWindow
     private TextField userInputTextField;
     private Button sendButton;
 
+    // --- Icons ---
+    private Texture2D headerIcon;
+    private Texture2D sendIcon;
+    private Texture2D userIcon;
+    private Texture2D assistantIcon;
+
     // --- UI State & Configuration ---
     private string lmstudioHost = "localhost";
     private int lmstudioPort = 1234;
     private string lmstudioModel = "qwen/qwen3-14b";
-    private float lmstudioTemperature = 0.2f;
+    private float lmstudioTemperature = 0.8f;
 
     // --- Model Selection ---
     private List<string> availableModels = new List<string>();
@@ -54,7 +58,7 @@ public class UnityLocalAiEditor_v2 : EditorWindow
     public static void ShowWindow()
     {
         UnityLocalAiEditor_v2 wnd = GetWindow<UnityLocalAiEditor_v2>();
-        wnd.titleContent = new GUIContent("Unity Local AI v2");
+        wnd.titleContent = new GUIContent("Unity Local AI");
     }
 
     public void CreateGUI()
@@ -67,11 +71,28 @@ public class UnityLocalAiEditor_v2 : EditorWindow
         var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/UnityLocalAi/Editor/ui/UnityLocalAiEditor_v2.uss");
         root.styleSheets.Add(styleSheet);
 
+        LoadIcons();
         QueryUIElements(root);
+        AssignIcons();
         RegisterCallbacks();
 
         LoadLMStudioConfig();
         InitialStatusCheck();
+    }
+
+    private void LoadIcons()
+    {
+        // Placeholder paths - replace with actual icon assets when available
+        headerIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/ui/Icons/icon_header.png");
+        sendIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/ui/Icons/icon_send.png");
+        userIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/ui/Icons/icon_user.png");
+        assistantIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/ui/Icons/icon_ai.png");
+    }
+
+    private void AssignIcons()
+    {
+        rootVisualElement.Q<Image>("header-icon").image = headerIcon;
+        rootVisualElement.Q<Image>("send-button-icon").image = sendIcon;
     }
 
     private void Update()
@@ -90,7 +111,6 @@ public class UnityLocalAiEditor_v2 : EditorWindow
         chatList = root.Q<ScrollView>("chat-list");
         serverStatusIndicator = root.Q<VisualElement>("server-status-indicator");
         serverStatusLabel = root.Q<Label>("server-status-label");
-        lmStudioStatusLabel = root.Q<Label>("lmstudio-status-label");
         startServerButton = root.Q<Button>("start-server-button");
         hostTextField = root.Q<TextField>("host-text-field");
         portTextField = root.Q<TextField>("port-text-field");
@@ -110,21 +130,57 @@ public class UnityLocalAiEditor_v2 : EditorWindow
         refreshModelsButton.clicked += () => FetchAvailableModels();
         applyButton.clicked += UpdateLMStudioConfigOnServer;
         sendButton.clicked += () => SendChatMessage(userInputTextField.text);
+        userInputTextField.RegisterCallback<KeyDownEvent>(evt => {
+            if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
+            {
+                SendChatMessage(userInputTextField.text);
+            }
+        });
+
         temperatureSlider.RegisterValueChangedCallback(evt =>
         {
             temperatureValueLabel.text = evt.newValue.ToString("F1");
         });
+
         newChatButton.clicked += () => Debug.Log("New Chat button clicked - functionality not yet implemented.");
         deleteChatButton.clicked += () => Debug.Log("Delete Chat button clicked - functionality not yet implemented.");
     }
 
     private void AddMessageToChatHistory(string sender, string message)
     {
+        var messageContainer = new VisualElement();
+        messageContainer.AddToClassList("message-container");
+
+        var icon = new Image
+        {
+            image = (sender == "You" ? userIcon : assistantIcon)
+        };
+        icon.AddToClassList("message-icon");
+
+        var messageBubble = new VisualElement();
+        messageBubble.AddToClassList("message-bubble");
+
         var messageLabel = new Label(message);
-        messageLabel.AddToClassList(sender == "You" ? "user-message" : "assistant-message");
-        chatHistory.Add(messageLabel);
-        chatHistory.ScrollTo(messageLabel);
+        messageBubble.Add(messageLabel);
+
+        if (sender == "You")
+        {
+            messageContainer.AddToClassList("message-container--user");
+            messageBubble.AddToClassList("message-bubble--user");
+            messageContainer.Add(messageBubble);
+            messageContainer.Add(icon);
+        }
+        else
+        {
+            messageBubble.AddToClassList("message-bubble--assistant");
+            messageContainer.Add(icon);
+            messageContainer.Add(messageBubble);
+        }
+
+        chatHistory.Add(messageContainer);
+        chatHistory.schedule.Execute(() => chatHistory.ScrollTo(messageContainer));
     }
+
 
     private async void SendChatMessage(string message)
     {
@@ -133,10 +189,18 @@ public class UnityLocalAiEditor_v2 : EditorWindow
         AddMessageToChatHistory("You", message);
         userInputTextField.value = "";
 
-        var thinkingMessage = new Label("<i>Processing...</i>");
-        thinkingMessage.AddToClassList("assistant-message");
-        chatHistory.Add(thinkingMessage);
-        chatHistory.ScrollTo(thinkingMessage);
+        var thinkingContainer = new VisualElement();
+        thinkingContainer.AddToClassList("message-container");
+        var thinkingIcon = new Image { image = assistantIcon };
+        thinkingIcon.AddToClassList("message-icon");
+        var thinkingBubble = new Label("<i>Processing...</i>");
+        thinkingBubble.AddToClassList("message-bubble");
+        thinkingBubble.AddToClassList("message-bubble--assistant");
+        thinkingContainer.Add(thinkingIcon);
+        thinkingContainer.Add(thinkingBubble);
+        chatHistory.Add(thinkingContainer);
+        chatHistory.schedule.Execute(() => chatHistory.ScrollTo(thinkingContainer));
+
 
         try
         {
@@ -148,6 +212,8 @@ public class UnityLocalAiEditor_v2 : EditorWindow
             HttpResponseMessage response = await httpClient.PostAsync(url, content);
             string responseJson = await response.Content.ReadAsStringAsync();
 
+            chatHistory.Remove(thinkingContainer);
+
             if (!response.IsSuccessStatusCode)
             {
                 throw new Exception($"Server returned error {response.StatusCode}: {responseJson}");
@@ -157,7 +223,6 @@ public class UnityLocalAiEditor_v2 : EditorWindow
             string llmResponse = result["llm_response"]?.ToString() ?? "No text response.";
             JArray commands = result["commands"] as JArray;
 
-            chatHistory.Remove(thinkingMessage);
             AddMessageToChatHistory("Assistant", llmResponse);
 
             if (commands != null && commands.Count > 0)
@@ -168,7 +233,7 @@ public class UnityLocalAiEditor_v2 : EditorWindow
         catch (Exception ex)
         {
             Debug.LogError($"[MCP] Error sending chat message: {ex.Message}");
-            chatHistory.Remove(thinkingMessage);
+            chatHistory.Remove(thinkingContainer);
             AddMessageToChatHistory("Assistant", $"<b>Error:</b> {ex.Message}");
         }
     }
@@ -190,12 +255,11 @@ public class UnityLocalAiEditor_v2 : EditorWindow
                 {
                     bool wasConnected = serverStatusLabel.text == "Connected";
                     serverStatusLabel.text = "Connected";
-                    serverStatusIndicator.RemoveFromClassList("status-indicator-disconnected");
-                    serverStatusIndicator.AddToClassList("status-indicator-connected");
+                    ColorUtility.TryParseHtmlString("#22c55e", out var connectedColor);
+                    serverStatusIndicator.style.backgroundColor = connectedColor;
 
                     if (!wasConnected)
                     {
-                        await CheckLMStudioStatus();
                         await FetchAvailableModels();
                     }
                 }
@@ -207,41 +271,12 @@ public class UnityLocalAiEditor_v2 : EditorWindow
         }
         catch
         {
-            if (serverStatusLabel.text != "Not Connected")
+            if (serverStatusLabel.text != "Disconnected")
             {
-                serverStatusLabel.text = "Not Connected";
-                serverStatusIndicator.RemoveFromClassList("status-indicator-connected");
-                serverStatusIndicator.AddToClassList("status-indicator-disconnected");
-                lmStudioStatusLabel.text = "N/A (Python server down)";
+                serverStatusLabel.text = "Disconnected";
+                 ColorUtility.TryParseHtmlString("#ef4444", out var disconnectedColor);
+                serverStatusIndicator.style.backgroundColor = disconnectedColor;
             }
-        }
-    }
-
-    private async Task CheckLMStudioStatus()
-    {
-        lmStudioStatusLabel.text = "Checking...";
-        try
-        {
-            string statusUrl = $"http://localhost:{MCP_PORT}/api/status";
-            HttpResponseMessage statusResponse = await httpClient.GetAsync(statusUrl);
-            string statusJson = await statusResponse.Content.ReadAsStringAsync();
-
-            if (!statusResponse.IsSuccessStatusCode) throw new Exception(statusJson);
-
-            var status = JObject.Parse(statusJson);
-            if (status["status"]?.ToString() == "connected")
-            {
-                lmStudioStatusLabel.text = $"Connected to model '{status["model"]}'";
-            }
-            else
-            {
-                lmStudioStatusLabel.text = $"<color=orange>LM Studio Disconnected.</color> Reason: {status["message"] ?? "Unknown"}";
-            }
-        }
-        catch (Exception ex)
-        {
-            lmStudioStatusLabel.text = $"<color=red>Error checking status.</color>";
-            Debug.LogError($"[MCP] Failed to check LM Studio status: {ex.Message}");
         }
     }
 
@@ -305,7 +340,6 @@ public class UnityLocalAiEditor_v2 : EditorWindow
             {
                 Debug.Log("[MCP] Configuration successfully updated on the server.");
                 SaveLMStudioConfig();
-                await CheckLMStudioStatus();
             }
             else
             {
@@ -418,12 +452,5 @@ public class UnityLocalAiEditor_v2 : EditorWindow
                 "OK"
             );
         }
-    }
-
-    private readonly struct ChatMessage
-    {
-        public readonly string sender;
-        public readonly string content;
-        public ChatMessage(string sender, string content) { this.sender = sender; this.content = content; }
     }
 }
