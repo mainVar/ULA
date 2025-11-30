@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Newtonsoft.Json.JObject;
+using Newtonsoft.Json.Linq;
 using UnityLocalAi;
 
 public class UnityLocalAiEditor_v2 : EditorWindow
