@@ -1,0 +1,89 @@
+/* General */
+:root {
+    --primary-color: #4f7ecf;
+    --background-dark: #1e1e1e;
+    --surface-dark: #2d2d2d;
+    --panel-dark: #252526;
+    --header-dark: #333333;
+    --text-primary-dark: #d4d4d4;
+    --text-secondary-dark: #a0a0a0;
+    --border-dark: #404040;
+}
+
+.header {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: var(--text-primary-dark);
+    margin-bottom: 5px;
+}
+
+/* Sidebar */
+#sidebar {
+    background-color: var(--panel-dark);
+    border-right-width: 1px;
+    border-right-color: var(--border-dark);
+}
+
+/* Server Status */
+.status-indicator-disconnected {
+    width: 10px;
+    height: 10px;
+    background-color: red;
+    border-radius: 5px;
+    margin-right: 5px;
+}
+
+.status-indicator-connected {
+    width: 10px;
+    height: 10px;
+    background-color: green;
+    border-radius: 5px;
+    margin-right: 5px;
+}
+
+.settings-box {
+    background-color: var(--surface-dark);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* Main Panel */
+#main-panel {
+    background-color: var(--surface-dark);
+}
+
+#chat-header {
+    background-color: var(--header-dark);
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border-dark);
+}
+
+/* Chat History */
+.user-message {
+    background-color: var(--primary-color);
+    color: white;
+    align-self: flex-end;
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 5px;
+    max-width: 80%;
+}
+
+.assistant-message {
+    background-color: #3a3a3a;
+    color: var(--text-primary-dark);
+    align-self: flex-start;
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 5px;
+    max-width: 80%;
+}
+
+/* Chat Input */
+#user-input-text-field {
+    background-color: var(--background-dark);
+    border-color: var(--border-dark);
+    border-radius: 5px;
+    padding: 10px;
+    color: var(--text-primary-dark);
+}

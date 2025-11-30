@@ -1,0 +1,55 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:VisualElement name="main-container" style="flex-direction: row; flex-grow: 1;">
+        <!-- Sidebar -->
+        <ui:VisualElement name="sidebar" style="width: 300px; padding: 10px;">
+            <!-- Chat Sessions -->
+            <ui:Label text="Chat Sessions" class="header" />
+            <ui:VisualElement style="flex-direction: row; margin-bottom: 5px;">
+                <ui:Button name="new-chat-button" text="New Chat" style="flex-grow: 1;" />
+                <ui:Button name="delete-chat-button" text="Delete Chat" style="flex-grow: 1;" />
+            </ui:VisualElement>
+            <ui:ScrollView name="chat-list" style="height: 150px; margin-bottom: 10px;" />
+
+            <!-- Server Status -->
+            <ui:Label text="Server Status" class="header" />
+            <ui:VisualElement name="server-status-container" style="flex-direction: row; align-items: center; margin-bottom: 5px;">
+                <ui:VisualElement name="server-status-indicator" class="status-indicator-disconnected" />
+                <ui:Label name="server-status-label" text="Disconnected" />
+            </ui:VisualElement>
+            <ui:Button name="start-server-button" text="Start Server" style="width: 100%;" />
+
+            <!-- LM Studio Settings -->
+            <ui:Label text="LM Studio Settings" class="header" style="margin-top: 10px;" />
+            <ui:VisualElement class="settings-box">
+                <ui:Label name="lmstudio-status-label" text="N/A" />
+                <ui:TextField name="host-text-field" label="Host" />
+                <ui:TextField name="port-text-field" label="Port" />
+                <ui:DropdownField name="model-dropdown" label="Model" />
+                <ui:Button name="refresh-models-button" text="Refresh Models" />
+                <ui:VisualElement style="flex-direction: row; align-items: center;">
+                    <ui:Slider name="temperature-slider" label="Temp" low-value="0" high-value="1" style="flex-grow: 1;" />
+                    <ui:Label name="temperature-value-label" text="0.2" style="width: 30px; margin-left: 5px;" />
+                </ui:VisualElement>
+                <ui:Button name="apply-button" text="Apply &amp; Save" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Main Panel -->
+        <ui:VisualElement name="main-panel" style="flex-grow: 1;">
+            <!-- Chat Header -->
+            <ui:VisualElement name="chat-header" style="flex-direction: row; justify-content: space-between; align-items: center; padding: 10px;">
+                <ui:Label text="Chat with Local AI" class="header" />
+                <ui:Button name="settings-button" text="Settings" />
+            </ui:VisualElement>
+
+            <!-- Chat History -->
+            <ui:ScrollView name="chat-history" style="flex-grow: 1; padding: 10px;" />
+
+            <!-- Chat Input -->
+            <ui:VisualElement name="chat-input-container" style="flex-direction: row; padding: 10px; align-items: center;">
+                <ui:TextField name="user-input-text-field" style="flex-grow: 1;" />
+                <ui:Button name="send-button" text="Send" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
