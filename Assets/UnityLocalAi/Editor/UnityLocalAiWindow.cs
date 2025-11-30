@@ -34,19 +34,17 @@ namespace UnityLocalAi
         // --- Chat ---
         private ChatSession currentSession;
         private List<ChatSession> allSessions;
-        private bool isCopyModeEnabled = false;
 
         // --- UI Toolkit Elements ---
         private VisualElement pythonServerStatusIndicator;
         private Label pythonServerStatusLabel;
         private Button startServerButton;
-        private Label lmstudioStatusLabel;
         private Button refreshLMStatusButton;
         private TextField lmstudioHostField;
-        private IntegerField lmstudioPortField;
+        private TextField lmstudioPortField;
         private DropdownField lmstudioModelDropdown;
         private Slider lmstudioTemperatureSlider;
-        private FloatField lmstudioTemperatureField;
+        private Label tempLabel;
         private Button applyLMConfigButton;
         private ScrollView chatScrollView;
         private TextField chatInput;
@@ -55,7 +53,10 @@ namespace UnityLocalAi
         private Button newChatButton;
         private Button deleteChatButton;
         private Button settingsButton;
-        private Button copyModeButton;
+        private Image headerIcon;
+        private Image sendIcon;
+        private Texture2D userIcon;
+        private Texture2D assistantIcon;
 
         // --- Networking ---
         private static readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
@@ -93,14 +94,6 @@ namespace UnityLocalAi
             }
         }
 
-        private void ToggleCopyMode()
-        {
-            isCopyModeEnabled = !isCopyModeEnabled;
-            copyModeButton.text = isCopyModeEnabled ? "View Mode" : "Select Text";
-            RefreshChatView();
-            copyModeButton.Focus();
-        }
-
         private void RefreshChatView()
         {
             if (chatScrollView == null || currentSession?.messages == null) return;
@@ -126,39 +119,32 @@ namespace UnityLocalAi
                     }
                 }
 
-                if (isCopyModeEnabled)
+                var messageBubble = new VisualElement();
+                messageBubble.AddToClassList("message-bubble");
+                messageBubble.AddToClassList(message.sender == "You" ? "message-user" : "message-assistant");
+
+                var messageIcon = new Image();
+                messageIcon.AddToClassList("message-icon");
+                messageIcon.image = message.sender == "You" ? userIcon : assistantIcon;
+
+                var messageLabel = new Label(message.content)
                 {
-                    var messageField = new TextField
-                    {
-                        value = message.content,
-                        name = messageName,
-                        isReadOnly = true,
-                        multiline = true
-                    };
-                    messageField.AddToClassList(message.sender == "You" ? "chat-message-user" : "chat-message-assistant");
-                    messageField.style.whiteSpace = WhiteSpace.Normal;
-                    var textInput = messageField.Q(TextField.textInputUssName);
-                    if (textInput != null)
-                    {
-                        textInput.style.borderTopWidth = 0;
-                        textInput.style.borderBottomWidth = 0;
-                        textInput.style.borderLeftWidth = 0;
-                        textInput.style.borderRightWidth = 0;
-                        textInput.style.backgroundColor = new StyleColor(StyleKeyword.None);
-                    }
-                    messageElement = messageField;
+                    name = messageName
+                };
+                messageLabel.AddToClassList("message-text");
+
+                if (message.sender == "You")
+                {
+                    messageBubble.Add(messageLabel);
+                    messageBubble.Add(messageIcon);
                 }
                 else
                 {
-                    var messageLabel = new Label(message.content)
-                    {
-                        name = messageName
-                    };
-                    messageLabel.AddToClassList(message.sender == "You" ? "chat-message-user" : "chat-message-assistant");
-                    messageLabel.style.whiteSpace = WhiteSpace.Normal;
-                    messageElement = messageLabel;
+                    messageBubble.Add(messageIcon);
+                    messageBubble.Add(messageLabel);
                 }
-                chatScrollView.Add(messageElement);
+
+                chatScrollView.Add(messageBubble);
             }
             chatScrollView.schedule.Execute(() => {
                 if (chatScrollView.contentContainer.childCount > 0)
@@ -201,9 +187,18 @@ namespace UnityLocalAi
             QueryUIElements();
             RegisterCallbacks();
             LoadConfigAndState();
+            LoadIcons();
 
             SetServerStatus(true, "Ready");
             FetchAvailableModels();
+        }
+
+        private void LoadIcons()
+        {
+            headerIcon.image = (Texture2D)AssetDatabase.LoadAssetAtPath("Assets/UnityLocalAi/Editor/UI/Icons/New/auto_awesome.png", typeof(Texture2D));
+            sendIcon.image = (Texture2D)AssetDatabase.LoadAssetAtPath("Assets/UnityLocalAi/Editor/UI/Icons/New/send.png", typeof(Texture2D));
+            userIcon = (Texture2D)AssetDatabase.LoadAssetAtPath("Assets/UnityLocalAi/Editor/UI/Icons/New/person.png", typeof(Texture2D));
+            assistantIcon = (Texture2D)AssetDatabase.LoadAssetAtPath("Assets/UnityLocalAi/Editor/UI/Icons/New/auto_awesome.png", typeof(Texture2D));
         }
 
         private void QueryUIElements()
@@ -211,13 +206,12 @@ namespace UnityLocalAi
             pythonServerStatusIndicator = rootVisualElement.Q<VisualElement>("PythonServerStatusIndicator");
             pythonServerStatusLabel = rootVisualElement.Q<Label>("PythonServerStatusLabel");
             startServerButton = rootVisualElement.Q<Button>("StartServerButton");
-            lmstudioStatusLabel = rootVisualElement.Q<Label>("LMStudioStatusLabel");
             lmstudioHostField = rootVisualElement.Q<TextField>("LMStudioHost");
-            lmstudioPortField = rootVisualElement.Q<IntegerField>("LMStudioPort");
+            lmstudioPortField = rootVisualElement.Q<TextField>("LMStudioPort");
             lmstudioModelDropdown = rootVisualElement.Q<DropdownField>("LMStudioModel");
             refreshLMStatusButton = rootVisualElement.Q<Button>("RefreshModelsButton");
             lmstudioTemperatureSlider = rootVisualElement.Q<Slider>("LMStudioTemperature");
-            lmstudioTemperatureField = rootVisualElement.Q<FloatField>("LMStudioTemperatureField");
+            tempLabel = rootVisualElement.Q<Label>("TempLabel");
             applyLMConfigButton = rootVisualElement.Q<Button>("ApplyLMConfigButton");
             chatScrollView = rootVisualElement.Q<ScrollView>("ChatScrollView");
             chatInput = rootVisualElement.Q<TextField>("ChatInput");
@@ -226,7 +220,8 @@ namespace UnityLocalAi
             newChatButton = rootVisualElement.Q<Button>("NewChatButton");
             deleteChatButton = rootVisualElement.Q<Button>("DeleteChatButton");
             settingsButton = rootVisualElement.Q<Button>("SettingsButton");
-            copyModeButton = rootVisualElement.Q<Button>("CopyModeButton");
+            headerIcon = rootVisualElement.Q<Image>("HeaderIcon");
+            sendIcon = rootVisualElement.Q<Image>("SendIcon");
         }
 
         private void RegisterCallbacks()
@@ -238,19 +233,19 @@ namespace UnityLocalAi
             newChatButton.clicked += StartNewChatSession;
             deleteChatButton.clicked += OnDeleteChatButtonPressed;
             settingsButton.clicked += SettingsWindow.ShowWindow;
-            copyModeButton.clicked += ToggleCopyMode;
 
             lmstudioHostField.RegisterValueChangedCallback(evt => lmstudioHost = evt.newValue);
-            lmstudioPortField.RegisterValueChangedCallback(evt => lmstudioPort = evt.newValue);
+            lmstudioPortField.RegisterValueChangedCallback(evt => {
+                if (int.TryParse(evt.newValue, out int port))
+                {
+                    lmstudioPort = port;
+                }
+            });
             lmstudioModelDropdown.RegisterValueChangedCallback(evt => lmstudioModel = evt.newValue);
 
             lmstudioTemperatureSlider.RegisterValueChangedCallback(evt => {
-                lmstudioTemperature = Mathf.Clamp(evt.newValue, 0, 2);
-                lmstudioTemperatureField.SetValueWithoutNotify(lmstudioTemperature);
-            });
-            lmstudioTemperatureField.RegisterValueChangedCallback(evt => {
-                lmstudioTemperature = Mathf.Clamp(evt.newValue, 0, 2);
-                lmstudioTemperatureSlider.SetValueWithoutNotify(lmstudioTemperature);
+                lmstudioTemperature = Mathf.Clamp(evt.newValue, 0, 1);
+                tempLabel.text = lmstudioTemperature.ToString("F1");
             });
 
             chatInput.RegisterCallback<KeyDownEvent>(evt => {
@@ -266,9 +261,9 @@ namespace UnityLocalAi
         {
             LoadLMStudioConfig();
             lmstudioHostField.value = lmstudioHost;
-            lmstudioPortField.value = lmstudioPort;
+            lmstudioPortField.value = lmstudioPort.ToString();
             lmstudioTemperatureSlider.value = lmstudioTemperature;
-            lmstudioTemperatureField.value = lmstudioTemperature;
+            tempLabel.text = lmstudioTemperature.ToString("F1");
             SetupChatHistory();
         }
 
@@ -379,10 +374,6 @@ namespace UnityLocalAi
             if (pythonServerStatusIndicator == null) return;
             pythonServerStatusIndicator.style.backgroundColor = isConnected ? Color.green : Color.red;
             pythonServerStatusLabel.text = customMessage ?? (isConnected ? "Connected" : "Not Connected");
-            if (!isConnected)
-            {
-                lmstudioStatusLabel.text = "N/A (Python server down)";
-            }
         }
 
         private async void SendChatMessage(string message)
