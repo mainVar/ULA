@@ -41,7 +41,7 @@ namespace UnityLocalAi
         private Button startServerButton;
         private Button refreshLMStatusButton;
         private TextField lmstudioHostField;
-        private TextField lmstudioPortField;
+        private IntegerField lmstudioPortField;
         private DropdownField lmstudioModelDropdown;
         private Slider lmstudioTemperatureSlider;
         private Label tempLabel;
@@ -83,8 +83,6 @@ namespace UnityLocalAi
 
         private void OnFocus()
         {
-            // When the window gets focus, check if the chat history needs to be reloaded.
-            // This is a simple way to update the list if the path was changed in the settings.
             if(allSessions != null && chatHistoryList != null)
             {
                 var sessionsOnDisk = ChatHistoryManager.LoadAllSessions();
@@ -130,7 +128,7 @@ namespace UnityLocalAi
                     var messageLabel = new Label(message.content) { enableRichText = true };
                     messageContentContainer.Add(messageLabel);
                 }
-                else // Assistant message
+                else
                 {
                     var content = message.content;
 
@@ -201,7 +199,7 @@ namespace UnityLocalAi
 
         public void CreateGUI()
         {
-            // GUI creation is now handled in Initialize() called from OnEnable()
+            Initialize();
         }
 
         private void Initialize()
@@ -211,24 +209,12 @@ namespace UnityLocalAi
             var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor_v2.uxml");
             if (visualTree == null)
             {
-                rootVisualElement.Add(new Label("Error: Could not find UXML file."));
+                rootVisualElement.Add(new Label("Error: Could not find UXML file at Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor_v2.uxml"));
                 return;
             }
-            chatHistoryItemAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/UI/ChatHistoryItem.uxml");
-            if (chatHistoryItemAsset == null)
-            {
-                // Fallback in case the UXML is missing
-                var tempContainer = new VisualElement();
-                tempContainer.AddToClassList("chat-history-item");
-                tempContainer.Add(new Label() { name = "ChatHistoryItemTitle" });
-                tempContainer.Add(new Label() { name = "ChatHistoryItemPreview" });
-                chatHistoryItemAsset = ScriptableObject.CreateInstance<VisualTreeAsset>();
-                // This is a workaround to create a valid visual tree asset from code
-                // It might not be the most robust solution but works for this case.
-                 EditorUtility.CopySerialized(tempContainer, chatHistoryItemAsset);
-            }
-
             visualTree.CloneTree(rootVisualElement);
+
+            chatHistoryItemAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/UI/ChatHistoryItem.uxml");
 
             var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor_v2.uss");
             if (styleSheet != null)
@@ -245,6 +231,7 @@ namespace UnityLocalAi
             FetchAvailableModels();
         }
 
+
         private void LoadIcons()
         {
             headerIcon.image = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/UI/Icons/auto_awesome.png");
@@ -259,7 +246,7 @@ namespace UnityLocalAi
             pythonServerStatusLabel = rootVisualElement.Q<Label>("PythonServerStatusLabel");
             startServerButton = rootVisualElement.Q<Button>("StartServerButton");
             lmstudioHostField = rootVisualElement.Q<TextField>("LMStudioHost");
-            lmstudioPortField = rootVisualElement.Q<TextField>("LMStudioPort");
+            lmstudioPortField = rootVisualElement.Q<IntegerField>("LMStudioPort");
             lmstudioModelDropdown = rootVisualElement.Q<DropdownField>("LMStudioModel");
             refreshLMStatusButton = rootVisualElement.Q<Button>("RefreshModelsButton");
             lmstudioTemperatureSlider = rootVisualElement.Q<Slider>("LMStudioTemperature");
@@ -287,12 +274,7 @@ namespace UnityLocalAi
             settingsButton.clicked += SettingsWindow.ShowWindow;
 
             lmstudioHostField.RegisterValueChangedCallback(evt => lmstudioHost = evt.newValue);
-            lmstudioPortField.RegisterValueChangedCallback(evt => {
-                if (int.TryParse(evt.newValue, out int port))
-                {
-                    lmstudioPort = port;
-                }
-            });
+            lmstudioPortField.RegisterValueChangedCallback(evt => lmstudioPort = evt.newValue);
             lmstudioModelDropdown.RegisterValueChangedCallback(evt => lmstudioModel = evt.newValue);
 
             lmstudioTemperatureSlider.RegisterValueChangedCallback(evt => {
@@ -313,7 +295,7 @@ namespace UnityLocalAi
         {
             LoadLMStudioConfig();
             lmstudioHostField.value = lmstudioHost;
-            lmstudioPortField.value = lmstudioPort.ToString();
+            lmstudioPortField.value = lmstudioPort;
             lmstudioTemperatureSlider.value = lmstudioTemperature;
             tempLabel.text = lmstudioTemperature.ToString("F1");
             SetupChatHistory();
@@ -323,7 +305,27 @@ namespace UnityLocalAi
         {
             allSessions = ChatHistoryManager.LoadAllSessions();
 
-            chatHistoryList.makeItem = () => chatHistoryItemAsset.CloneTree();
+            chatHistoryList.makeItem = () => {
+                if (chatHistoryItemAsset != null)
+                {
+                    return chatHistoryItemAsset.CloneTree();
+                }
+                else
+                {
+                    var itemRoot = new VisualElement();
+                    itemRoot.AddToClassList("chat-history-item");
+                    var title = new Label();
+                    title.name = "ChatHistoryItemTitle";
+                    title.AddToClassList("chat-history-item-title");
+                    var preview = new Label();
+                    preview.name = "ChatHistoryItemPreview";
+                    preview.AddToClassList("chat-history-item-preview");
+                    itemRoot.Add(title);
+                    itemRoot.Add(preview);
+                    return itemRoot;
+                }
+            };
+
             chatHistoryList.bindItem = (element, i) =>
             {
                 var session = allSessions[i];
@@ -338,8 +340,8 @@ namespace UnityLocalAi
 
             chatHistoryList.itemsSource = allSessions;
 
-            chatHistoryList.onSelectionChange -= OnChatSelectionChanged; // Unsubscribe to prevent multiple handlers
-            chatHistoryList.onSelectionChange += OnChatSelectionChanged; // Subscribe with the named method
+            chatHistoryList.onSelectionChange -= OnChatSelectionChanged;
+            chatHistoryList.onSelectionChange += OnChatSelectionChanged;
 
             string lastSessionId = EditorPrefs.GetString(EDITOR_PREFS_KEY, null);
             var lastSession = allSessions.FirstOrDefault(s => s.sessionId == lastSessionId);
@@ -389,7 +391,7 @@ namespace UnityLocalAi
                 "Are you sure you want to permanently delete this chat session?", "Delete", "Cancel"))
             {
                 ChatHistoryManager.DeleteSession(selectedSession);
-                LoadConfigAndState(); // Reload the entire state from disk
+                LoadConfigAndState();
             }
         }
 
