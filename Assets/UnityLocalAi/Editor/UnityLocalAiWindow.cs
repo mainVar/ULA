@@ -41,7 +41,7 @@ namespace UnityLocalAi
         private Button startServerButton;
         private Button refreshLMStatusButton;
         private TextField lmstudioHostField;
-        private IntegerField lmstudioPortField;
+        private TextField lmstudioPortField;
         private DropdownField lmstudioModelDropdown;
         private Slider lmstudioTemperatureSlider;
         private Label tempLabel;
@@ -246,7 +246,7 @@ namespace UnityLocalAi
             pythonServerStatusLabel = rootVisualElement.Q<Label>("PythonServerStatusLabel");
             startServerButton = rootVisualElement.Q<Button>("StartServerButton");
             lmstudioHostField = rootVisualElement.Q<TextField>("LMStudioHost");
-            lmstudioPortField = rootVisualElement.Q<IntegerField>("LMStudioPort");
+            lmstudioPortField = rootVisualElement.Q<TextField>("LMStudioPort");
             lmstudioModelDropdown = rootVisualElement.Q<DropdownField>("LMStudioModel");
             refreshLMStatusButton = rootVisualElement.Q<Button>("RefreshModelsButton");
             lmstudioTemperatureSlider = rootVisualElement.Q<Slider>("LMStudioTemperature");
@@ -274,7 +274,12 @@ namespace UnityLocalAi
             settingsButton.clicked += SettingsWindow.ShowWindow;
 
             lmstudioHostField.RegisterValueChangedCallback(evt => lmstudioHost = evt.newValue);
-            lmstudioPortField.RegisterValueChangedCallback(evt => lmstudioPort = evt.newValue);
+            lmstudioPortField.RegisterValueChangedCallback(evt => {
+                if (int.TryParse(evt.newValue, out int port))
+                {
+                    lmstudioPort = port;
+                }
+            });
             lmstudioModelDropdown.RegisterValueChangedCallback(evt => lmstudioModel = evt.newValue);
 
             lmstudioTemperatureSlider.RegisterValueChangedCallback(evt => {
@@ -295,7 +300,7 @@ namespace UnityLocalAi
         {
             LoadLMStudioConfig();
             lmstudioHostField.value = lmstudioHost;
-            lmstudioPortField.value = lmstudioPort;
+            lmstudioPortField.value = lmstudioPort.ToString();
             lmstudioTemperatureSlider.value = lmstudioTemperature;
             tempLabel.text = lmstudioTemperature.ToString("F1");
             SetupChatHistory();
