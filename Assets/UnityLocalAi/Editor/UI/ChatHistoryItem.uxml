@@ -1,0 +1,6 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement class="chat-history-item">
+        <ui:Label name="ChatHistoryItemTitle" class="chat-history-item-title" />
+        <ui:Label name="ChatHistoryItemPreview" class="chat-history-item-preview" />
+    </ui:VisualElement>
+</ui:UXML>
