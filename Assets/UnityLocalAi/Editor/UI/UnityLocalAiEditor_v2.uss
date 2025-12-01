@@ -8,6 +8,9 @@
     --text-secondary-dark: #a0a0a0;
     --border-dark: #404040;
     --green-500: #22c55e;
+    --gray-600: #4a5568;
+    --gray-700: #2d3748;
+    --gray-800: #1a202c;
 }
 
 .root {
@@ -15,6 +18,7 @@
     height: 100%;
     background-color: var(--background-dark);
     color: var(--text-primary-dark);
+    font-size: 14px;
 }
 
 .header {
@@ -36,7 +40,6 @@
     width: 24px;
     height: 24px;
     margin-right: 8px;
-    -unity-background-image-tint-color: var(--primary-color);
 }
 
 .main-container {
@@ -52,7 +55,6 @@
 
 .right-panel {
     flex-grow: 1;
-    flex-direction: column;
     background-color: var(--surface-dark);
 }
 
@@ -76,7 +78,7 @@
 
 .button {
     flex-grow: 1;
-    background-color: #4a4a4a;
+    background-color: var(--gray-700);
     color: var(--text-primary-dark);
     border-radius: 4px;
     padding: 8px;
@@ -84,7 +86,7 @@
 }
 
 .button:hover {
-    background-color: #5a5a5a;
+    background-color: var(--gray-600);
 }
 
 .button.primary {
@@ -98,16 +100,33 @@
 
 .chat-history-list .unity-list-view__item {
     background-color: transparent;
-    border-radius: 4px;
+    padding: 2px 0;
+}
+
+.chat-history-list .unity-list-view__item--selected .chat-history-item {
+    background-color: var(--gray-700);
+}
+
+.chat-history-item {
     padding: 12px;
+    border-radius: 4px;
 }
 
-.chat-history-list .unity-list-view__item:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+.chat-history-item:hover {
+    background-color: rgba(45, 45, 45, 0.5);
 }
 
-.chat-history-list .unity-list-view__item--selected {
-    background-color: #4a4a4a;
+.chat-history-item-title {
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.chat-history-item-preview {
+    font-size: 11px;
+    color: var(--text-secondary-dark);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 .server-status-section, .lm-studio-settings-section {
@@ -146,12 +165,14 @@
     margin-bottom: 8px;
 }
 
-.setting-row .unity-text-field {
-    width: 66%;
-}
-
+.setting-row .unity-text-field,
 .setting-row .unity-dropdown-field {
     width: 66%;
+    background-color: var(--gray-800);
+    border-color: var(--border-dark);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
 }
 
 .setting-row .unity-slider {
@@ -159,7 +180,7 @@
 }
 
 .temp-label {
-    background-color: #4a4a4a;
+    background-color: var(--gray-800);
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 12px;
@@ -183,6 +204,9 @@
     padding: 16px;
     border-top-width: 1px;
     border-top-color: var(--border-dark);
+}
+
+.chat-input-container {
     flex-direction: row;
     align-items: center;
 }
@@ -190,48 +214,62 @@
 .chat-input {
     flex-grow: 1;
     height: 48px;
+    background-color: var(--background-dark);
+    border-color: var(--border-dark);
+    border-radius: 8px;
+    padding: 0 12px;
+    margin-right: -40px;
+    padding-right: 48px;
 }
 
 .send-button {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     background-color: transparent;
     border-width: 0;
-    margin-left: 12px;
+    position: relative;
+    right: 8px;
 }
 
 .send-icon {
     width: 24px;
     height: 24px;
-    -unity-background-image-tint-color: var(--primary-color);
 }
 
 .message-bubble {
     flex-direction: row;
     align-items: flex-start;
-    margin-bottom: 12px;
-    max-width: 80%;
+    margin-bottom: 24px;
 }
 
 .message-user {
-    align-self: flex-end;
+    justify-content: flex-end;
 }
 
 .message-assistant {
-    align-self: flex-start;
+    justify-content: flex-start;
 }
 
 .message-icon {
     width: 32px;
     height: 32px;
     border-radius: 16px;
-    background-color: #4a4a4a;
-    -unity-background-image-tint-color: var(--text-primary-dark);
+    background-color: var(--gray-600);
+}
+
+.message-user .message-icon {
+    background-image: resource("person");
+}
+
+.message-assistant .message-icon {
+    background-image: resource("auto_awesome");
+    -unity-background-image-tint-color: var(--primary-color);
 }
 
 .message-text {
-    padding: 12px;
-    border-radius: 8px;
+    padding: 8px 16px;
+    border-radius: 16px;
+    max-width: 80%;
     white-space: normal;
 }
 
@@ -242,6 +280,6 @@
 }
 
 .message-assistant .message-text {
-    background-color: #4a4a4a;
+    background-color: var(--gray-700);
     margin-left: 12px;
 }

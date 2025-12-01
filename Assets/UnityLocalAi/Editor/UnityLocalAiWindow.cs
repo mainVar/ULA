@@ -57,6 +57,7 @@ namespace UnityLocalAi
         private Image sendIcon;
         private Texture2D userIcon;
         private Texture2D assistantIcon;
+        private VisualTreeAsset chatHistoryItemAsset;
 
         // --- Networking ---
         private static readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
@@ -101,14 +102,9 @@ namespace UnityLocalAi
             chatScrollView.Clear();
             foreach (var message in currentSession.messages)
             {
-                VisualElement messageElement;
                 string messageName = "";
-
-                // Assign a name to the last message so it can be found and updated
                 if (currentSession.messages.IndexOf(message) == currentSession.messages.Count - 1)
                 {
-                    // LastOrDefault returns a struct (ChatMessage). Since ChatMessage is a value type,
-                    // comparing it to null is invalid. Check the list count and use Last() instead.
                     if (currentSession.messages.Count > 0)
                     {
                         var lastMessage = currentSession.messages.Last();
@@ -123,25 +119,67 @@ namespace UnityLocalAi
                 messageBubble.AddToClassList("message-bubble");
                 messageBubble.AddToClassList(message.sender == "You" ? "message-user" : "message-assistant");
 
-                var messageIcon = new Image();
+                var messageIcon = new Image { image = message.sender == "You" ? userIcon : assistantIcon };
                 messageIcon.AddToClassList("message-icon");
-                messageIcon.image = message.sender == "You" ? userIcon : assistantIcon;
 
-                var messageLabel = new Label(message.content)
-                {
-                    name = messageName
-                };
-                messageLabel.AddToClassList("message-text");
+                var messageContentContainer = new VisualElement();
+                messageContentContainer.AddToClassList("message-text");
 
                 if (message.sender == "You")
                 {
-                    messageBubble.Add(messageLabel);
+                    var messageLabel = new Label(message.content) { enableRichText = true };
+                    messageContentContainer.Add(messageLabel);
+                }
+                else // Assistant message
+                {
+                    var content = message.content;
+
+                    const string separator = "\n\n";
+                    int separatorIndex = content.LastIndexOf(separator);
+                    string commandCandidate = "";
+
+                    if (separatorIndex > -1)
+                    {
+                        commandCandidate = content.Substring(separatorIndex + separator.Length);
+                    }
+
+                    bool hasCommands = !string.IsNullOrEmpty(commandCandidate) && commandCandidate.Trim().StartsWith("[") && commandCandidate.Trim().EndsWith("]");
+
+                    if (hasCommands)
+                    {
+                        string reasoningText = content.Substring(0, separatorIndex);
+                        string commandText = commandCandidate.Trim();
+
+                        var reasoningLabel = new Label(reasoningText) { enableRichText = true };
+                        reasoningLabel.AddToClassList("reasoning-text");
+
+                        var foldout = new Foldout { text = "Show Commands", value = false };
+                        foldout.AddToClassList("commands-foldout");
+
+                        var commandField = new TextField(null, -1, true, false, '*') { value = commandText, isReadOnly = true};
+                        commandField.AddToClassList("command-text");
+
+                        foldout.Add(commandField);
+
+                        messageContentContainer.Add(reasoningLabel);
+                        messageContentContainer.Add(foldout);
+                    }
+                    else
+                    {
+                        var messageLabel = new Label(content) { name = messageName, enableRichText = true };
+                        messageContentContainer.Add(messageLabel);
+                    }
+                }
+
+                if (message.sender == "You")
+                {
+                    messageBubble.Add(messageContentContainer);
                     messageBubble.Add(messageIcon);
                 }
                 else
                 {
                     messageBubble.Add(messageIcon);
-                    messageBubble.Add(messageLabel);
+                    messageBubble.Add(messageContentContainer);
                 }
 
                 chatScrollView.Add(messageBubble);
@@ -176,6 +214,20 @@ namespace UnityLocalAi
                 rootVisualElement.Add(new Label("Error: Could not find UXML file."));
                 return;
             }
+            chatHistoryItemAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/UI/ChatHistoryItem.uxml");
+            if (chatHistoryItemAsset == null)
+            {
+                // Fallback in case the UXML is missing
+                var tempContainer = new VisualElement();
+                tempContainer.AddToClassList("chat-history-item");
+                tempContainer.Add(new Label() { name = "ChatHistoryItemTitle" });
+                tempContainer.Add(new Label() { name = "ChatHistoryItemPreview" });
+                chatHistoryItemAsset = ScriptableObject.CreateInstance<VisualTreeAsset>();
+                // This is a workaround to create a valid visual tree asset from code
+                // It might not be the most robust solution but works for this case.
+                 EditorUtility.CopySerialized(tempContainer, chatHistoryItemAsset);
+            }
+
             visualTree.CloneTree(rootVisualElement);
 
             var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor_v2.uss");
@@ -195,10 +247,10 @@ namespace UnityLocalAi
 
         private void LoadIcons()
         {
-            headerIcon.image = (Texture2D)AssetDatabase.LoadAssetAtPath("Assets/UnityLocalAi/Editor/UI/Icons/New/auto_awesome.png", typeof(Texture2D));
-            sendIcon.image = (Texture2D)AssetDatabase.LoadAssetAtPath("Assets/UnityLocalAi/Editor/UI/Icons/New/send.png", typeof(Texture2D));
-            userIcon = (Texture2D)AssetDatabase.LoadAssetAtPath("Assets/UnityLocalAi/Editor/UI/Icons/New/person.png", typeof(Texture2D));
-            assistantIcon = (Texture2D)AssetDatabase.LoadAssetAtPath("Assets/UnityLocalAi/Editor/UI/Icons/New/auto_awesome.png", typeof(Texture2D));
+            headerIcon.image = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/UI/Icons/auto_awesome.png");
+            sendIcon.image = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/UI/Icons/send.png");
+            userIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/UI/Icons/person.png");
+            assistantIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/UI/Icons/auto_awesome.png");
         }
 
         private void QueryUIElements()
@@ -271,14 +323,17 @@ namespace UnityLocalAi
         {
             allSessions = ChatHistoryManager.LoadAllSessions();
 
-            chatHistoryList.makeItem = () => new Label();
+            chatHistoryList.makeItem = () => chatHistoryItemAsset.CloneTree();
             chatHistoryList.bindItem = (element, i) =>
             {
-                var label = element as Label;
                 var session = allSessions[i];
                 var dateTime = DateTimeOffset.FromUnixTimeSeconds(session.createdAt).LocalDateTime;
-                label.text = session.messages.Any() ? session.messages[0].content : $"Chat from {dateTime:g}";
-                label.tooltip = $"Chat from {dateTime:g}";
+
+                var titleLabel = element.Q<Label>("ChatHistoryItemTitle");
+                var previewLabel = element.Q<Label>("ChatHistoryItemPreview");
+
+                titleLabel.text = $"Chat from {dateTime:g}";
+                previewLabel.text = session.messages.Any() ? session.messages[0].content : "New Chat";
             };
 
             chatHistoryList.itemsSource = allSessions;
@@ -408,8 +463,6 @@ namespace UnityLocalAi
                     finalResponse = $"<b>Reasoning:</b>\n{reasoning}\n\n{llmResponse}";
                 }
 
-                // The `commands` array is parsed directly from the server's JSON response.
-                // It is separate from the `llm_response` and `reasoning` fields which are combined for display.
                 JArray commands = result["commands"] as JArray;
 
                 UpdateLastAssistantMessage(finalResponse);
