@@ -1,0 +1,72 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UnityLocalAi/Editor/ui/UnityLocalAiEditor_v2.uss?fileID=7433441132597879392&amp;guid=8b1d6aa53ca6125459e38e70456822a9&amp;type=3#UnityLocalAiEditor_v2" />
+    <ui:VisualElement name="Root" class="root">
+        <ui:VisualElement name="Header" class="header">
+            <ui:VisualElement class="header-left">
+                <ui:Image name="HeaderIcon" class="header-icon" />
+                <ui:Label text="Unity Local AI" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement class="main-container">
+            <ui:VisualElement name="LeftPanel" class="left-panel">
+                <ui:VisualElement class="chat-sessions-section">
+                    <ui:Label text="Chat Sessions" class="h2" />
+                    <ui:VisualElement class="button-group">
+                        <ui:Button name="NewChatButton" text="New Chat" class="button" />
+                        <ui:Button name="DeleteChatButton" text="Delete Chat" class="button" />
+                    </ui:VisualElement>
+                    <ui:ListView name="ChatHistoryList" class="chat-history-list" />
+                </ui:VisualElement>
+                <ui:VisualElement class="server-status-section">
+                    <ui:Label text="Server Status" class="h3" />
+                    <ui:VisualElement class="server-status-content">
+                        <ui:VisualElement class="status-indicator-row">
+                            <ui:VisualElement name="PythonServerStatusIndicator" class="status-indicator" />
+                            <ui:Label name="PythonServerStatusLabel" text="Connected" class="status-label" />
+                        </ui:VisualElement>
+                        <ui:Button name="StartServerButton" text="Start Server" class="button" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="lm-studio-settings-section">
+                    <ui:Label text="LM Studio Settings" class="h3" />
+                    <ui:VisualElement class="settings-content">
+                        <ui:VisualElement class="setting-row">
+                            <ui:Label text="Host" />
+                            <ui:TextField name="LMStudioHost" value="localhost" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="setting-row">
+                            <ui:Label text="Port" />
+                            <ui:TextField name="LMStudioPort" value="1234" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="setting-row">
+                            <ui:Label text="Model" />
+                            <uie:DropdownField name="LMStudioModel" />
+                        </ui:VisualElement>
+                        <ui:Button name="RefreshModelsButton" text="Refresh" class="button" />
+                        <ui:VisualElement class="setting-row">
+                            <ui:Label text="Temp" />
+                            <ui:Slider name="LMStudioTemperature" low-value="0" high-value="1" value="0.8" />
+                            <ui:Label text="0.8" name="TempLabel" class="temp-label" />
+                        </ui:VisualElement>
+                        <ui:Button name="ApplyLMConfigButton" text="Apply &amp; Save" class="button primary" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="RightPanel" class="right-panel">
+                <ui:VisualElement name="TopChatPart" class="chat-header">
+                    <ui:Label text="Chat with Local AI" />
+                    <ui:Button name="SettingsButton" text="Settings" class="button" style="flex-grow: 0;" />
+                </ui:VisualElement>
+                <ui:ScrollView name="ChatScrollView" class="chat-scroll-view" />
+                <ui:VisualElement class="input-container">
+                    <ui:VisualElement class="chat-input-container">
+                        <ui:TextField name="ChatInput" placeholder="Type your message..." multiline="false" class="chat-input" />
+                        <ui:Button name="SendButton" class="send-button">
+                            <ui:Image name="SendIcon" class="send-icon" />
+                        </ui:Button>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,341 @@
+:root {
+    --primary-color: rgb(79, 126, 207);
+    --background-dark: rgb(30, 30, 30);
+    --surface-dark: rgb(45, 45, 45);
+    --panel-dark: rgb(37, 37, 38);
+    --header-dark: rgb(51, 51, 51);
+    --text-primary-dark: rgb(212, 212, 212);
+    --text-secondary-dark: rgb(160, 160, 160);
+    --border-dark: rgb(64, 64, 64);
+    --green-500: rgb(34, 197, 94);
+    --gray-600: rgb(74, 85, 104);
+    --gray-700: rgb(45, 55, 72);
+    --gray-800: rgb(26, 32, 44);
+}
+
+.root {
+    width: 100%;
+    height: 100%;
+    background-color: var(--background-dark);
+    color: var(--text-primary-dark);
+    font-size: 14px;
+}
+
+.header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background-color: var(--header-dark);
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border-dark);
+}
+
+.header-left {
+    flex-direction: row;
+    align-items: center;
+}
+
+.header-icon {
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+}
+
+.main-container {
+    flex-direction: row;
+    flex-grow: 1;
+}
+
+.left-panel {
+    width: 288px;
+    background-color: var(--panel-dark);
+    padding: 16px;
+}
+
+.right-panel {
+    flex-grow: 1;
+    background-color: var(--surface-dark);
+}
+
+.h2 {
+    font-size: 18px;
+    -unity-font-style: bold;
+    margin-bottom: 12px;
+}
+
+.h3 {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: var(--text-secondary-dark);
+    margin-bottom: 8px;
+}
+
+.button-group {
+    flex-direction: row;
+    margin-bottom: 12px;
+}
+
+.button {
+    flex-grow: 1;
+    background-color: var(--gray-700);
+    color: var(--text-primary-dark);
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 12px;
+}
+
+.button:hover {
+    background-color: var(--gray-600);
+}
+
+.button.primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.button.primary:hover {
+    background-color: rgb(106, 154, 239);
+}
+
+.chat-history-list .unity-list-view__item {
+    background-color: transparent;
+    padding: 2px 0;
+}
+
+.chat-history-list .unity-list-view__item--selected .chat-history-item {
+    background-color: var(--gray-700);
+}
+
+.chat-history-item {
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.chat-history-item:hover {
+    background-color: rgba(45, 45, 45, 0.5);
+}
+
+.chat-history-item-title {
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.chat-history-item-preview {
+    font-size: 11px;
+    color: var(--text-secondary-dark);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.server-status-section {
+    margin-top: 24px;
+}
+
+.lm-studio-settings-section {
+    margin-top: 24px;
+}
+
+.server-status-content {
+    background-color: var(--surface-dark);
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.settings-content {
+    background-color: var(--surface-dark);
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.status-indicator-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    background-color: var(--green-500);
+    margin-right: 8px;
+}
+
+.status-label {
+    color: var(--green-500);
+    font-size: 14px;
+}
+
+.setting-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.setting-row .unity-text-field {
+    width: 66%;
+    background-color: var(--gray-800);
+    border-color: var(--border-dark);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.setting-row .unity-dropdown-field {
+    width: 66%;
+    background-color: var(--gray-800);
+    border-color: var(--border-dark);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.setting-row .unity-slider {
+    width: 50%;
+}
+
+.temp-label {
+    background-color: var(--gray-800);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.chat-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border-dark);
+    margin-bottom: 10px;
+}
+
+.chat-header Label {
+    flex-grow: 1;
+}
+
+.chat-scroll-view {
+    flex-grow: 1;
+    padding: 24px;
+}
+
+.input-container {
+    padding: 16px;
+    border-top-width: 1px;
+    border-top-color: var(--border-dark);
+}
+
+.chat-input-container {
+    flex-direction: row;
+    align-items: center;
+}
+
+.chat-input {
+    flex-grow: 1;
+    height: 48px;
+    background-color: var(--background-dark);
+    border-color: var(--border-dark);
+    border-radius: 8px;
+    padding: 0 12px;
+    margin-right: -40px;
+    padding-right: 48px;
+}
+
+.send-button {
+    width: 40px;
+    height: 40px;
+    background-color: transparent;
+    border-width: 0;
+    position: relative;
+    right: 8px;
+}
+
+.send-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.message-bubble {
+    flex-direction: row;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.message-user {
+    justify-content: flex-end;
+}
+
+.message-assistant {
+    justify-content: flex-start;
+}
+
+.message-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 16px;
+    background-color: var(--gray-600);
+}
+
+.message-user .message-icon {
+    background-color: var(--gray-600);
+}
+
+.message-assistant .message-icon {
+    background-color: var(--gray-600);
+}
+
+.message-text {
+    padding: 8px 16px;
+    border-radius: 16px;
+    max-width: 80%;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.message-text Label {
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.message-user .message-text {
+    background-color: var(--primary-color);
+    color: white;
+    margin-right: 12px;
+}
+
+.message-assistant .message-text {
+    background-color: var(--gray-700);
+    margin-left: 12px;
+}
+
+.reasoning-text {
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.command-text {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+}
+
+.commands-foldout {
+    max-width: 100%;
+}
+
+.commands-foldout .unity-foldout__content {
+    max-width: 100%;
+    overflow-x: auto;
+}
