@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Debug = UnityEngine.Debug;
-using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 using System.Linq;
 
@@ -206,17 +205,17 @@ namespace UnityLocalAi
         {
             rootVisualElement.Clear();
 
-            var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor_v2.uxml");
+            var visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/ui/UnityLocalAiEditor_v2.uxml");
             if (visualTree == null)
             {
-                rootVisualElement.Add(new Label("Error: Could not find UXML file at Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor_v2.uxml"));
+                rootVisualElement.Add(new Label("Error: Could not find UXML file at Assets/UnityLocalAi/Editor/ui/UnityLocalAiEditor_v2.uxml"));
                 return;
             }
             visualTree.CloneTree(rootVisualElement);
 
-            chatHistoryItemAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/UI/ChatHistoryItem.uxml");
+            chatHistoryItemAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UnityLocalAi/Editor/ui/ChatHistoryItem.uxml");
 
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/UnityLocalAi/Editor/UI/UnityLocalAiEditor_v2.uss");
+            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/UnityLocalAi/Editor/ui/UnityLocalAiEditor_v2.uss");
             if (styleSheet != null)
             {
                 rootVisualElement.styleSheets.Add(styleSheet);
@@ -234,10 +233,10 @@ namespace UnityLocalAi
 
         private void LoadIcons()
         {
-            headerIcon.image = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/UI/Icons/auto_awesome.png");
-            sendIcon.image = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/UI/Icons/send.png");
-            userIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/UI/Icons/person.png");
-            assistantIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/UI/Icons/auto_awesome.png");
+            headerIcon.image = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/ui/Icons/auto_awesome.png");
+            sendIcon.image = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/ui/Icons/send.png");
+            userIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/ui/Icons/person.png");
+            assistantIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/UnityLocalAi/Editor/ui/Icons/auto_awesome.png");
         }
 
         private void QueryUIElements()

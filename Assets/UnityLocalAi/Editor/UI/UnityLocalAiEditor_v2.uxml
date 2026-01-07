@@ -1,5 +1,5 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
-    <Style src="UnityLocalAiEditor_v2.uss" />
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UnityLocalAi/Editor/ui/UnityLocalAiEditor_v2.uss?fileID=7433441132597879392&amp;guid=8b1d6aa53ca6125459e38e70456822a9&amp;type=3#UnityLocalAiEditor_v2" />
     <ui:VisualElement name="Root" class="root">
         <ui:VisualElement name="Header" class="header">
             <ui:VisualElement class="header-left">
@@ -46,16 +46,16 @@
                         <ui:VisualElement class="setting-row">
                             <ui:Label text="Temp" />
                             <ui:Slider name="LMStudioTemperature" low-value="0" high-value="1" value="0.8" />
-                            <ui:Label text="0.8" name="TempLabel" class="temp-label"/>
+                            <ui:Label text="0.8" name="TempLabel" class="temp-label" />
                         </ui:VisualElement>
                         <ui:Button name="ApplyLMConfigButton" text="Apply &amp; Save" class="button primary" />
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement name="RightPanel" class="right-panel">
-                <ui:VisualElement class="chat-header">
+                <ui:VisualElement name="TopChatPart" class="chat-header">
                     <ui:Label text="Chat with Local AI" />
-                    <ui:Button name="SettingsButton" text="Settings" class="button" />
+                    <ui:Button name="SettingsButton" text="Settings" class="button" style="flex-grow: 0;" />
                 </ui:VisualElement>
                 <ui:ScrollView name="ChatScrollView" class="chat-scroll-view" />
                 <ui:VisualElement class="input-container">
