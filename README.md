@@ -1,68 +1,274 @@
 # Unity Local AI Agent (ULA)
 
-This project provides a Unity Editor window that acts as an interface to a local Large Language Model (LLM) running via LM Studio. It allows developers to send natural language commands to the LLM, which are then translated into executable Unity Editor commands. This setup enables a powerful workflow where you can manipulate objects, trigger actions, and query the scene using text prompts directly within the Unity Editor.
+<p align="center">
+  <img src="https://img.shields.io/badge/Unity-2022.3%2B-000000?style=for-the-badge&logo=unity" alt="Unity 2022.3+"/>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+"/>
+  <img src="https://img.shields.io/badge/LM%20Studio-Compatible-00A67E?style=for-the-badge" alt="LM Studio"/>
+  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT License"/>
+</p>
 
-## Features
+> ⚠️ **This is a legacy/learning project.** See [Important Notes](#-important-notes--why-this-approach-has-limitations) below before using.
 
--   **Chat Interface:** A simple chat window to send prompts to the LLM.
--   **Python Backend Server:** A FastAPI server acts as a bridge between Unity and your local LM Studio instance.
--   **Dynamic Model Selection:** The editor window automatically fetches and displays a list of all available models from your LM Studio server, allowing you to switch between them easily.
--   **Start Server Button:** A button within the editor window to start the Python backend server directly, without needing to open a separate terminal.
--   **Configuration:** UI fields to configure the connection to the LM Studio server (host, port, temperature).
+**Control your Unity Editor with natural language.** ULA is a Unity Editor extension that lets you create, modify, and manage GameObjects, scripts, materials, and scenes using plain English commands — powered by your local LLM via LM Studio.
 
-## How it Works
+---
 
-1.  **Unity Editor Window (`MCPEditorWindow.cs`):** This is the main user interface within Unity. It sends user prompts to the Python server.
-2.  **Python Server (`lmstudio_mcp_server.py`):** This FastAPI server receives requests from Unity. It formats the prompt with a system message and forwards it to the LM Studio API.
-3.  **LM Studio:** Your local LLM server processes the prompt and returns a response, which should contain JSON-formatted commands.
-4.  **Command Execution:** The Python server extracts the JSON commands from the LLM's response and sends them back to Unity. The `UnityMCPBridge.cs` script in Unity then parses and executes these commands, affecting the scene or editor state.
+## 🚨 Important Notes — Why This Approach Has Limitations
 
-## Setup and Usage
+**This is an older project that I'm publishing for educational purposes.** It demonstrates the concept of building a bridge between local LLMs and Unity. However, this approach has significant problems that I discovered while building it. I'm sharing this so you can learn from my experience and avoid making the same mistakes.
 
-1.  **Clone the repository:**
-    ```
-    git clone https://github.com/your-username/unity-local-ai-agent.git
-    ```
-2.  **Install Python dependencies:**
-    ```
-    pip install -r Assets/Python/Python/requirements.txt
-    ```
-3.  **Open the project in Unity:**
-    -   Open Unity Hub and click "Add".
-    -   Select the cloned repository's folder.
-    -   Open the project in Unity.
-4.  **Open the Unity Local AI window:**
-    -   In the Unity Editor, go to `Window > Unity Local AI`.
-5.  **Start the Python server:**
-    -   Click the "Start Python Server" button in the Unity Local AI window.
-6.  **Configure the LM Studio connection:**
-    -   Enter the host, port, and model of your LM Studio server.
-    -   Click "Apply & Save Configuration".
-7.  **Start chatting with the AI:**
-    -   Enter a prompt in the chat input field and click "Send".
-    -   The AI will respond with a message and execute any commands it generates.
+### ❌ Key Problems with This Approach
 
-## Contributing
+#### 1. Local Models Struggle with Standard MCP Protocol
+Local models have difficulty working reliably with the standard MCP (Model Context Protocol). That's why I created a simplified version here. But this simplification comes at a cost — see point 2.
 
-Contributions are welcome! If you'd like to contribute to the project, please follow these steps:
+#### 2. Not a Real MCP Tool
+Although we use an MCP-like approach, this project **cannot be connected as an MCP tool** to code editors (Cursor, Cline, etc.) without significant modifications. Any variations of building a separate chat window inside Unity are fundamentally flawed for this reason. **I don't recommend building in-editor chat windows.**
 
-1.  **Fork the repository.**
-2.  **Create a new branch for your feature or bug fix.**
-3.  **Make your changes and commit them with a clear and descriptive commit message.**
-4.  **Push your changes to your fork.**
-5.  **Create a pull request to the main repository.**
+#### 3. System Prompt Explosion
+As you add more tools, the system prompt (defined in the Python server's `config.py`) grows enormous. Models start to hallucinate and become overloaded. This is not a scalable approach. At minimum, you need a way to dynamically control which tools are available to the LLM.
 
-## To-Do
+#### 4. Hardware Requirements Are Prohibitive
+To host a local model with decent context length, you need **at least 16GB of VRAM**. Even then, the models you can run will perform roughly like OpenAI/Anthropic/Google models from 7-9 months ago. The cost of "intelligence" is constantly dropping — it's more efficient to use a cloud API.
 
--   **Add support for more LLM providers:**
-    -   Add support for other LLM providers, such as Ollama and Jan.
--   **Improve the UI:**
-    -   Add more features to the UI, such as a history of commands and a way to customize the system prompt.
--   **Add more commands:**
-    -   Add more commands to the `UnityMCPBridge.cs` script to allow the AI to control more of the Unity Editor.
--   **Improve the documentation:**
-    -   Add more detailed documentation to the `README.md` and the code.
+### ✅ What I Recommend Instead
 
-## License
+**Use my other open-source project that solves these problems:**
 
-This project is licensed under the MIT License. See the `LICENSE` file for more details.
+<p align="center">
+  <a href="https://github.com/IvanMurzak/Unity-MCP">
+    <img src="https://img.shields.io/badge/Recommended-Unity--MCP-success?style=for-the-badge&logo=github" alt="Unity-MCP"/>
+  </a>
+</p>
+
+👉 **[github.com/IvanMurzak/Unity-MCP](https://github.com/IvanMurzak/Unity-MCP)**
+
+This project implements proper MCP protocol support, allowing you to connect Unity tools directly to code editors like Cursor, Cline, and others.
+
+### 🏢 For Businesses Concerned About Data Privacy
+
+If privacy is critical, I recommend:
+1. Deploy a single LLM server on your company's local network
+2. Connect it to Kilo Code, Cline, or another tool that supports custom endpoints (like LM Studio server)
+3. Use proper MCP tools for Unity integration
+
+If you want more details on this approach, feel free to open a Pull Request or Issue — I'll provide more comprehensive guidance.
+
+---
+
+## ✨ Features
+
+### 🎮 Natural Language Control
+- Create and manipulate GameObjects with simple commands
+- Generate C# scripts and shaders on the fly
+- Manage scenes, materials, and prefabs through conversation
+
+### 🔌 Local-First Architecture
+- **No cloud dependencies** — runs entirely on your machine
+- Works with any LLM model loaded in LM Studio
+- FastAPI Python bridge handles communication
+
+### 💬 Built-in Chat Interface
+- Clean, modern UI built with Unity UI Toolkit
+- Persistent chat history across sessions
+- Multiple conversation support with easy switching
+
+### 🎛️ Extensive Command Set
+
+| Category | Capabilities |
+|----------|-------------|
+| **GameObjects** | Create, find, modify, delete, add/remove components, set properties |
+| **Scripts** | Create, read, update, delete C# scripts |
+| **Shaders** | Create and manage custom shaders |
+| **Assets** | Create materials, prefabs, folders; duplicate, move, rename |
+| **Scenes** | New, save, load scenes |
+| **Editor** | Play, pause, stop; read console logs; execute menu items |
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- **Unity** 2022.3 LTS or later
+- **Python** 3.10+
+- **LM Studio** with any compatible model loaded
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/mainVar/ULA.git
+   ```
+
+2. **Install Python dependencies**
+   ```bash
+   cd ULA/Assets/Python/Python
+   pip install -r requirements.txt
+   ```
+   
+   Or using [uv](https://github.com/astral-sh/uv) (faster):
+   ```bash
+   uv sync
+   ```
+
+3. **Open in Unity**
+   - Open Unity Hub → Add → Select the cloned folder
+   - Unity will import the project
+
+4. **Open the ULA Window**
+   - In Unity: `Window → Unity Local AI`
+
+---
+
+## 🛠️ Usage
+
+### Starting the Server
+
+1. Make sure **LM Studio** is running with a model loaded
+2. In the ULA window, click **"Start Python Server"**
+3. The status indicator will turn green when connected
+
+### Configuration
+
+Configure the connection in the ULA window:
+- **LM Studio Host** — default: `localhost`
+- **LM Studio Port** — default: `1234`
+- **Model** — select from dropdown (auto-fetched from LM Studio)
+- **Temperature** — controls response randomness
+
+### Example Commands
+
+Try these prompts in the chat:
+
+```
+Create a red cube at position 0, 2, 0
+```
+
+```
+Add a Rigidbody component to the Cube and enable gravity
+```
+
+```
+Create a new C# script called PlayerController with basic movement
+```
+
+```
+Save the current scene as Scenes/TestLevel
+```
+
+---
+
+## 📁 Project Structure
+
+```
+Assets/
+├── Python/
+│   └── Python/
+│       ├── lmstudio_mcp_server.py   # FastAPI server
+│       ├── config.py                 # Server & LLM configuration
+│       └── requirements.txt          # Python dependencies
+│
+└── UnityLocalAi/
+    └── Editor/
+        ├── UnityLocalAiWindow.cs     # Main editor window
+        ├── UnityMCPBridge.cs         # Command dispatcher
+        ├── GameObjectCommands.cs     # GameObject operations
+        ├── SceneCommands.cs          # Scene management
+        ├── ScriptCommands.cs         # Script/shader operations
+        ├── AssetCommands.cs          # Asset operations
+        ├── EditorCommands.cs         # Editor state control
+        ├── ChatHistoryManager.cs     # Chat persistence
+        └── ui/                       # UI Toolkit files (UXML/USS)
+```
+
+---
+
+## 🔧 Available Commands
+
+The AI understands these command functions:
+
+### `manage_gameobject`
+Create, modify, delete GameObjects and their components.
+
+```json
+{
+  "function": "manage_gameobject",
+  "args": {
+    "action": "create",
+    "name": "Player",
+    "primitive_type": "Capsule",
+    "position": [0, 1, 0],
+    "components_to_add": ["Rigidbody", "CapsuleCollider"]
+  }
+}
+```
+
+### `manage_script`
+Create and manage C# scripts.
+
+```json
+{
+  "function": "manage_script",
+  "args": {
+    "action": "create",
+    "name": "EnemyAI",
+    "path": "Assets/Scripts/",
+    "contents": "using UnityEngine;\n\npublic class EnemyAI : MonoBehaviour { }"
+  }
+}
+```
+
+### `manage_asset`
+Create materials, prefabs, and manage project assets.
+
+```json
+{
+  "function": "manage_asset",
+  "args": {
+    "action": "create",
+    "asset_type": "Material",
+    "path": "Assets/Materials/Gold.mat",
+    "properties": {
+      "color": [1, 0.84, 0, 1]
+    }
+  }
+}
+```
+
+### `manage_scene`
+New, save, and load scenes.
+
+### `manage_editor`
+Control play mode: `play`, `pause`, `stop`, `get_state`.
+
+### `read_console`
+Read and clear Unity console logs.
+
+### `execute_menu_item`
+Execute any Unity Editor menu command.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- Built for use with [LM Studio](https://lmstudio.ai/)
+- Powered by [FastAPI](https://fastapi.tiangolo.com/)
+- Unity UI built with [UI Toolkit](https://docs.unity3d.com/Manual/UIElements.html)
+
+---
+
+## 👉 See Also
+
+For a production-ready solution, check out **[Unity-MCP](https://github.com/IvanMurzak/Unity-MCP)** — proper MCP protocol implementation for Unity that integrates with modern AI code editors.
