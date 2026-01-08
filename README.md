@@ -5,6 +5,9 @@
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+"/>
   <img src="https://img.shields.io/badge/LM%20Studio-Compatible-00A67E?style=for-the-badge" alt="LM Studio"/>
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT License"/>
+  <a href="https://github.com/mainVar/ULA/releases/latest">
+    <img src="https://img.shields.io/github/v/release/mainVar/ULA?label=Download&style=for-the-badge" alt="Download"/>
+  </a>
 </p>
 
 > ⚠️ **This is a legacy/learning project.** See [Important Notes](#-important-notes--why-this-approach-has-limitations) below before using.
