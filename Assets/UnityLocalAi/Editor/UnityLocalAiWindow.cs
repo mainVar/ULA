@@ -24,7 +24,7 @@ namespace UnityLocalAi
         private string lmstudioHost = "localhost";
         private int lmstudioPort = 1234;
         private string lmstudioModel = "qwen/qwen3-14b";
-        private float lmstudioTemperature = 0.2f;
+        private float lmstudioTemperature = 0.8f;
 
         // --- Model Selection ---
         private List<string> availableModels = new List<string>();
