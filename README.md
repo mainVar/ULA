@@ -33,7 +33,7 @@ To host a local model with decent context length, you need **at least 16GB of VR
 
 ### ✅ What I Recommend Instead
 
-**Use my other open-source project that solves these problems:**
+**Use another open source project I participate in that solves these problems:**
 
 <p align="center">
   <a href="https://github.com/IvanMurzak/Unity-MCP">
